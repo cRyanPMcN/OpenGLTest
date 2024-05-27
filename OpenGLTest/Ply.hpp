@@ -1,4 +1,6 @@
 #pragma once
+// Created this file to test OpenGL code on a complete model.
+// Complete up to index, file is no longer being updated as the code is going to be based on GLTF
 #include "BufferFormat.hpp"
 #include <sstream>
 #include <map>
