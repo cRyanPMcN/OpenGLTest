@@ -9,15 +9,7 @@
 #include <memory>
 
 namespace JsonParse {
-#if INTPTR_MAX == INT64_MAX
-	using floatmax_t = double;
-#elif INTPTR_MAX == INT32_MAX
-	using floatmax_t = float;
-#else
-#error Unknown INTPTR_MAX detected
-#endif
-
-	enum class Type : char {
+		enum class Type : char {
 		None,
 		Object,
 		Array,
@@ -100,13 +92,13 @@ namespace JsonParse {
 	};
 
 	struct JsonNumber : JsonElement {
-		using value_type = floatmax_t;
+		using value_type = double;
 		static const Type Class_Type() {
 			return Type::Number;
 		}
-		floatmax_t value;
+		double value;
 
-		JsonNumber(floatmax_t val) : value(val), JsonElement(Type::Number) {
+		JsonNumber(double val) : value(val), JsonElement(Type::Number) {
 
 		}
 
@@ -500,7 +492,7 @@ namespace JsonParse {
 				return std::make_shared<JsonInteger>(intVal);
 			}
 			else {
-				floatmax_t flVal;
+				double flVal;
 				const std::from_chars_result res = std::from_chars(value.c_str(), value.c_str() + value.size(), flVal);
 				if (res.ec == std::errc::invalid_argument) {
 					fileStats.columns -= value.size();
