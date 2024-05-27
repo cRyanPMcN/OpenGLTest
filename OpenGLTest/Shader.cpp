@@ -20,15 +20,20 @@ unsigned int Compile_Shader(unsigned int type, const std::string& source) {
 		int length;
 		glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
 
-		char* message = (char*)_malloca(length * sizeof(char));
+		std::string message(length, char(0));
 
-		glGetShaderInfoLog(id, length, &length, message);
-
-		std::cerr << "Failed to " << (type == GL_VERTEX_SHADER ? "vertex" : "fragment") << " compile shader!" << std::endl;
-		std::cerr << message << std::endl;
+		glGetShaderInfoLog(id, length, &length, message.data());
 
 		glDeleteShader(id);
-		return 0;
+		if (type == GL_VERTEX_SHADER) {
+			throw std::exception(("Failed to compile vertex shader: " + message).data());
+		}
+		else if (type == GL_VERTEX_SHADER) {
+			throw std::exception(("Failed to compile fragment shader: " + message).data());
+		}
+		else {
+			throw std::exception(("Failed to compile unknown shader: " + message).data());
+		}
 	}
 
 	return id;
@@ -52,13 +57,11 @@ unsigned int Create_Shader(const std::string& vertexShader, const std::string& f
 		int length;
 		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
 
-		//char* message = (char*)_malloca(length * sizeof(char));
-		char* message = (char*)malloc(length * sizeof(char));
+		std::string message(length, char(0));
 
-		glGetProgramInfoLog(program, length, &length, message);
+		glGetProgramInfoLog(program, length, &length, message.data());
 
-		std::cerr << "Failed to link shader!" << std::endl;
-		std::cerr << message << std::endl;
+		throw std::exception(("Failed to link shader: " + message).data());
 
 		glDeleteShader(program);
 		return 0;
@@ -187,5 +190,30 @@ GLShader::GLShader(Config& config) : programId(glCreateProgram()) {
 	std::string fragmentCode = Read_Paths(config.pathsFragment, config.replacementsFragment);
 	fragmentCode += config.mainFragmentShader;
 
-	programId = Create_Shader(vertexCode, fragmentCode);
+	unsigned int vs = Compile_Shader(GL_VERTEX_SHADER, vertexCode);
+	unsigned int fs = Compile_Shader(GL_FRAGMENT_SHADER, fragmentCode);
+
+	glAttachShader(programId, vs);
+	glAttachShader(programId, fs);
+	glLinkProgram(programId);
+	glValidateProgram(programId);
+
+	int result;
+	glGetProgramiv(programId, GL_LINK_STATUS, &result);
+
+	if (result == GL_FALSE) {
+		int length;
+		glGetProgramiv(programId, GL_INFO_LOG_LENGTH, &length);
+
+		std::string message(length, char(0));
+
+		glGetProgramInfoLog(programId, length, &length, message.data());
+
+		glDeleteShader(programId);
+		throw std::exception(("Failed to link shader: " + message).data());
+
+	}
+
+	glDeleteShader(vs);
+	glDeleteShader(fs);
 }

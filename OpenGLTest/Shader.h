@@ -73,15 +73,6 @@ public:
 
 	GLShader(GLShader&&) = default;
 
-	GLint GetUniform(std::string const& name) {
-		decltype(uniformCache)::const_iterator findResult = uniformCache.find(name);
-		if (findResult == uniformCache.cend()) {
-			uniformCache.emplace(name, glGetUniformLocation(programId, name.c_str()));
-			return uniformCache[name];
-		}
-		return findResult->second;
-	}
-
 	ShaderUniform SetBool(const std::string& name, bool value) {
 		GLint uniformId = glGetUniformLocation(programId, name.c_str());
 		glProgramUniform1i(programId, uniformId, value);
