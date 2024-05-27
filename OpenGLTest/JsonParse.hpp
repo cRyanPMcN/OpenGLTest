@@ -229,32 +229,25 @@ namespace JsonParse {
 		std::string jsonSource;
 		std::shared_ptr<JsonElement> rootNode;
 
-		JsonFile(std::ifstream& file) {
+		JsonFile(std::ifstream& file) : rootNode(nullptr), jsonSource(""), fileStats() {
 			if (file.is_open()) {
 				std::stringstream stringSource;
 				stringSource << file.rdbuf();
 				jsonSource = stringSource.str();
 				file.close();
+				ParseJson();
 			}
-			else {
-				jsonSource = "[\"Failed To Open Source File\"]";
-			}
-
-			ParseJson();
 		}
 
-		JsonFile(std::ifstream&& file) {
+		JsonFile(std::ifstream&& file) : rootNode(nullptr), jsonSource(""), fileStats() {
 			if (file.is_open()) {
 				std::stringstream stringSource;
 				stringSource << file.rdbuf();
 				jsonSource = stringSource.str();
 				file.close();
+				
+				ParseJson();
 			}
-			else {
-				jsonSource = "[\"Failed To Open Source File\"]";
-			}
-
-			ParseJson();
 		}
 
 		JsonFile(std::filesystem::path const& jsonPath) : JsonFile(std::ifstream(jsonPath, std::ios::binary)) {
@@ -265,7 +258,7 @@ namespace JsonParse {
 
 		}
 
-		JsonFile(std::string::iterator sourceBegin, std::string::iterator sourceEnd) : jsonSource(sourceBegin, sourceEnd) {
+		JsonFile(std::string::iterator sourceBegin, std::string::iterator sourceEnd) : rootNode(nullptr), jsonSource(sourceBegin, sourceEnd), fileStats() {
 			ParseJson();
 		}
 
