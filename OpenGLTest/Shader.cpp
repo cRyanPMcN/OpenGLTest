@@ -167,7 +167,7 @@ static inline std::string Read_Paths(std::vector<std::string> const& paths, std:
 		std::string shaderCode;
 		std::filesystem::path filePath(pathString);
 		if (std::filesystem::is_empty(filePath)) {
-			// Path points to an empty file/directoy so skip it
+			// Path points to an empty file/directory so skip it
 			continue;
 		}
 		if (std::filesystem::is_directory(filePath)) {
