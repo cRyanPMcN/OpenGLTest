@@ -305,9 +305,7 @@ namespace JsonParse {
 					std::string::const_iterator iterCopy = sourceIter;
 					sourceIter = std::find(sourceIter, jsonSource.cend(), '\n');
 					if (sourceIter == jsonSource.cend()) {
-						// Set source back to copy so the correct line will be shown to the user
-						sourceIter = iterCopy;
-						throw std::runtime_error(FILE_FUNCTION_LINE + ": Unexpected End-Of-File encountered while skipping comment at " + GetStandardErrorMessage(sourceIter));
+						throw std::runtime_error(FILE_FUNCTION_LINE + ": Unexpected End-Of-File encountered while skipping comment at " + GetStandardErrorMessage(iterCopy));
 					}
 					++fileStats.lines;
 					fileStats.columns = 0;
@@ -321,9 +319,7 @@ namespace JsonParse {
 						sourceIter = std::find(sourceIter, jsonSource.cend(), '*');
 
 						if (sourceIter == jsonSource.cend()) {
-							// Set source back to copy so the correct line will be shown to the user
-							sourceIter = iterCopy;
-							throw std::runtime_error(FILE_FUNCTION_LINE + ": Unexpected End-Of-File encountered while skipping comment at " + GetStandardErrorMessage(sourceIter));
+							throw std::runtime_error(FILE_FUNCTION_LINE + ": Unexpected End-Of-File encountered while skipping comment at " + GetStandardErrorMessage(iterCopy));
 						}
 
 						std::string::const_reverse_iterator::difference_type numberLines = std::count(iterCopy, sourceIter, '\n');
