@@ -49,7 +49,7 @@ public:
 	/// <param name="offset"></param>
 	/// <returns></returns>
 	virtual bool ResetBuffer(GLsizeiptr bufferSize, void* data, GLintptr offset = 0) {
-		if (_isNonResizable && bufferSize != _bufferSize) {
+		if (_isNonResizable && (bufferSize + offset) > _bufferSize) {
 			return false;
 		}
 
