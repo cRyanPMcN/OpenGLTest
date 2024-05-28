@@ -217,9 +217,6 @@ public:
 		if (bind == bindings.end()) {
 			return false;
 		}
-		else {
-			return SetBuffer(sourceBuffer, *bind);
-		}
 
 		return SetBuffer(sourceBuffer, const_cast<Binding&>(binding));
 	}
