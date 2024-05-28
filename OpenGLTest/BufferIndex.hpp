@@ -3,11 +3,11 @@
 #include <GLAD\gl.h>
 #include <vector>
 
-struct BufferIndexSub {
+struct BufferIndexRange {
 	GLsizeiptr subBufferSize;
 	GLintptr bufferOffset;
 
-	BufferIndexSub(std::vector<unsigned int> const& indexes, GLintptr offset) : subBufferSize(sizeof(unsigned int) * indexes.size()), bufferOffset(offset) {
+	BufferIndexRange(std::vector<unsigned int> const& indexes, GLintptr offset) : subBufferSize(sizeof(unsigned int) * indexes.size()), bufferOffset(offset) {
 
 	}
 };
@@ -23,7 +23,7 @@ class BufferIndex : public Buffer {
 		return bufferSize;
 	}
 public:
-	std::vector<BufferIndexSub> subBuffers;
+	std::vector<BufferIndexRange> subBuffers;
 	BufferIndex(std::vector<unsigned int> const& indexes) : subBuffers(), Buffer(sizeof(std::remove_reference_t<decltype(indexes)>::value_type) * indexes.size(), (void*)indexes.data()) {
 		subBuffers.emplace_back(indexes, 0);
 	}
@@ -47,10 +47,6 @@ public:
 	~BufferIndex() {
 
 	}
-
-	//bool ResetBuffer(std::vector<unsigned int> const& indexes) {
-	//
-	//}
 
 	friend VertexArray;
 };
