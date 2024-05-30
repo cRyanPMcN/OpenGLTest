@@ -1,4 +1,6 @@
 #pragma once
+// TODO: Replace Texture2D with GLTexture from GLToolkit.hpp
+// TODO: Add more comprehensive textures
 #include <GLAD/gl.h>
 #include <vector>
 #include <string>
