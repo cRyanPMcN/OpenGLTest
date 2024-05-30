@@ -5,10 +5,6 @@
 #include <cmath>
 #include <stb_image.h>
 
-enum TextureFormat {
-
-};
-
 class Texture2D : Object {
 	GLuint textureId;
 	GLsizei _width, _height;
@@ -40,7 +36,7 @@ public:
 		//glGenerateTextureMipmap(textureId);
 	}
 
-	Texture2D(const std::string& path) {
+	Texture2D(std::string const& path) {
 		int nrChannels;
 		stbi_set_flip_vertically_on_load(true);
 
@@ -60,7 +56,7 @@ public:
 			_dataFormat = GL_RGB;
 			break;
 		default:
-			throw std::runtime_error("Texture2D(std::string & path): Unexpected number of channels for " + path + " received " + std::to_string(nrChannels) + ".");
+			throw std::runtime_error("Texture2D(std::string const& path): Unexpected number of channels for " + path + " received " + std::to_string(nrChannels) + ".");
 		}
 
 		glCreateTextures(GL_TEXTURE_2D, 1, &textureId);
