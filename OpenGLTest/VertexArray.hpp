@@ -249,6 +249,4 @@ public:
 	size_t Size() const noexcept {
 		return bindings.size();
 	}
-
-	friend int main(void);
 };
