@@ -11,13 +11,6 @@ namespace Math {
 
 }
 
-namespace Constants {
-	const static std::string STREAM_DATA("data:");
-	//const static std::string STREAM_CHECK_OCTECT("application/octet-stream;base64,");
-	//const static std::string STREAM_CHECK_GLTF("application/gltf-buffer;base64,");
-	const static std::string STREAM_SEPERATOR(";base64,");
-}
-
 struct Vec2I {
 	long long x, y;
 
@@ -99,9 +92,7 @@ struct Vec3 {
 };
 
 struct Vec4 {
-	struct {
-		float x, y, z, w;
-	};
+	float x, y, z, w;
 
 	Vec4() : x(0.0), y(0.0), z(0.0), w(0.0) {
 
@@ -240,8 +231,6 @@ struct GLCamera : public Object {
 	}
 };
 
-class GLBuffer;
-
 /// <summary>
 /// Utility class for decoding a base64 data-stream as well as parsing the mimeType
 /// </summary>
@@ -312,9 +301,10 @@ struct DataStreamBase64 {
 		return result;
 	}
 
+	// dataStream should be a std::vector<unsigned char>, input to this constructor is GLTF::Buffer::uri which is a string
 	DataStreamBase64(std::string const& dataStream) : 
-		mimeType(dataStream.substr(dataStream.find(Constants::STREAM_DATA) + Constants::STREAM_DATA.length(), dataStream.find(Constants::STREAM_SEPERATOR))), 
-		binaryData(Base64_Decode(dataStream.substr(dataStream.find(Constants::STREAM_SEPERATOR) + Constants::STREAM_SEPERATOR.length()))) {
+		mimeType(dataStream.substr(dataStream.find(GLTF::Constants::STREAM_DATA) + GLTF::Constants::STREAM_DATA.length(), dataStream.find(GLTF::Constants::STREAM_SEPERATOR))), 
+		binaryData(Base64_Decode(dataStream.substr(dataStream.find(GLTF::Constants::STREAM_SEPERATOR) + GLTF::Constants::STREAM_SEPERATOR.length()))) {
 	}
 };
 
@@ -346,7 +336,7 @@ class GLBufferData : public Object {
 		// Load a binary file and push directly to the bufferStorage
 		std::vector<unsigned char> retVal;
 
-		if (buffer.uri.find(Constants::STREAM_DATA) == 0) {
+		if (buffer.uri.find(GLTF::Constants::STREAM_DATA) == 0) {
 			DataStreamBase64 data(buffer.uri);
 			 
 			if (data.binaryData.size() != buffer.byteLength) {
@@ -386,8 +376,6 @@ public:
 	friend class GLBuffer;
 };
 
-#include "Buffer.hpp"
-
 /// <summary>
 /// Loads data from a GLDataSource object onto the GPU
 /// </summary>
@@ -409,7 +397,7 @@ public:
 			
 		}
 	} bufferInfo;
-public:
+
 	GLBuffer(GLTF::BufferView const& bufferView) : bufferInfo(bufferView) {
 		glCreateBuffers(1, &_idBuffer);
 		glNamedBufferStorage(_idBuffer, bufferInfo.lengthInBytes, nullptr, GL_DYNAMIC_STORAGE_BIT);
@@ -494,6 +482,7 @@ public:
 	}
 
 	GLSampler& operator=(GLSampler const& rhs) {
+		glCreateSamplers(1, &_idSampler);
 		GLint valueToCopy[4];
 		glGetSamplerParameteriv(rhs._idSampler, GL_TEXTURE_WRAP_S, &valueToCopy[0]);
 		glGetSamplerParameteriv(rhs._idSampler, GL_TEXTURE_WRAP_T, &valueToCopy[1]);
@@ -522,7 +511,7 @@ public:
 
 	GLImage(GLTF::Image const& image) : data(nullptr), width(-1), height(-1), channels(-1) {
 		if (!image.uri.empty()) {
-			if (image.uri.find(Constants::STREAM_DATA) == 0) {
+			if (image.uri.find(GLTF::Constants::STREAM_DATA) == 0) {
 				DataStreamBase64 base64(image.uri);
 
 				if (image.mimeType == GLTF::Constants::MIME_IMAGE_PNG) {
@@ -534,9 +523,13 @@ public:
 				
 			}
 			else {
-				if (image.bufferView != -1) {
-
+				if (image.mimeType.empty()) {
+					// Exception, no mimeType needed for load from buffer
 				}
+				if (image.bufferView != -1) {
+					// Load from buffer
+				}
+
 			}
 			// Try to load
 			std::filesystem::path filePath(image.uri);
@@ -546,7 +539,7 @@ public:
 
 	GLImage(GLTF::Image&& image) : data(nullptr), width(-1), height(-1), channels(-1) {
 		if (!image.uri.empty()) {
-			if (image.uri.find(Constants::STREAM_DATA) == 0) {
+			if (image.uri.find(GLTF::Constants::STREAM_DATA) == 0) {
 				DataStreamBase64 base64(image.uri);
 
 				if (image.mimeType == GLTF::Constants::MIME_IMAGE_PNG) {
