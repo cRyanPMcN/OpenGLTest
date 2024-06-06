@@ -1,5 +1,7 @@
 #pragma once
 
+//#define FILE_FUNCTION_LINE std::string(__FILE__) + ':' + std::string(__FUNCTION__) + '@' + std::to_string(__LINE__)
+
 #ifndef DOUBLE_PRECISION_FLOATING_POINT
 using floating_point_type = float;
 #else
