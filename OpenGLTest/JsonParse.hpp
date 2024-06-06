@@ -258,6 +258,11 @@ namespace JsonParse {
 
 		}
 
+		static std::pair<std::shared_ptr<JsonElement>, JsonFile::Statistics> Parse_Json(std::filesystem::path const& filePath) {
+			JsonFile file(filePath);
+			return std::pair<std::shared_ptr<JsonElement>, JsonFile::Statistics>(file.rootNode, file.fileStats);
+		}
+
 	protected:
 		bool IsJsonSpace(char c) {
 			//switch (c) {
@@ -650,11 +655,6 @@ namespace JsonParse {
 			if (sourceIter != jsonSource.cend()) {
 				throw std::runtime_error(FILE_FUNCTION_LINE + ": Unexpected character encountered after end of validation.");
 			}
-		}
-
-		static std::pair<std::shared_ptr<JsonElement>, JsonFile::Statistics> Parse_Json(std::filesystem::path const& filePath) {
-			JsonFile file(filePath);
-			return std::pair<std::shared_ptr<JsonElement>, JsonFile::Statistics>(file.rootNode, file.fileStats);
 		}
 	};
 };
