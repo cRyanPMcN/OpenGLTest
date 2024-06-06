@@ -1205,8 +1205,7 @@ namespace GLTF {
 					" value:" + std::to_string(element->value) + " must be " +
 					std::to_string(Enumerations::SamplerFilter::LINEAR) + ", " + std::to_string(Enumerations::SamplerFilter::NEAREST) +
 					std::to_string(Enumerations::SamplerFilter::LINEAR_MIPMAP_LINEAR) + ", " + std::to_string(Enumerations::SamplerFilter::LINEAR_MIPMAP_NEAREST) +
-					std::to_string(Enumerations::SamplerFilter::NEAREST_MIPMAP_LINEAR) + ", or " + std::to_string(Enumerations::SamplerFilter::NEAREST_MIPMAP_NEAREST) +
-					"."));
+					std::to_string(Enumerations::SamplerFilter::NEAREST_MIPMAP_LINEAR) + ", or " + std::to_string(Enumerations::SamplerFilter::NEAREST_MIPMAP_NEAREST) + "."));
 			}
 		}
 
@@ -1219,10 +1218,9 @@ namespace GLTF {
 			default:
 				errors.push_back(GLTFError(sampler, element, ErrorMessageStart(messagePreamble) +
 					" value:" + std::to_string(element->value) + " must be " +
-					std::to_string(Enumerations::SamplerFilter::LINEAR) + ", " + std::to_string(Enumerations::SamplerFilter::NEAREST) +
-					std::to_string(Enumerations::SamplerFilter::LINEAR_MIPMAP_LINEAR) + ", " + std::to_string(Enumerations::SamplerFilter::LINEAR_MIPMAP_NEAREST) +
-					std::to_string(Enumerations::SamplerFilter::NEAREST_MIPMAP_LINEAR) + ", or " + std::to_string(Enumerations::SamplerFilter::NEAREST_MIPMAP_NEAREST) +
-					"."));
+					std::to_string(Enumerations::SamplerWrap::CLAMP_TO_EDGE) + ", " +
+					std::to_string(Enumerations::SamplerWrap::MIRRORED_REPEAT) + ", or" +
+					std::to_string(Enumerations::SamplerWrap::REPEAT) + "."));
 			}
 		}
 
