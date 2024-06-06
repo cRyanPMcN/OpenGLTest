@@ -154,9 +154,9 @@ namespace GLTF {
 		// Buffer
 		const static std::string BYTE_LENGTH = "byteLength";
 		const static std::string STREAM_DATA("data:");
-		const static std::string STREAM_CHECK_OCTECT("application/octet-stream;base64,");
-		const static std::string STREAM_CHECK_GLTF("application/gltf-buffer;base64,");
-		const static std::string STREAM_SEPERATOR(";base64,");
+		const static std::string STREAM_CHECK_OCTECT("application/octet-stream;");
+		const static std::string STREAM_CHECK_GLTF("application/gltf-buffer;");
+		const static std::string STREAM_SEPERATOR("base64,");
 
 		// BufferView
 		const static std::string BUFFER = "buffer";
