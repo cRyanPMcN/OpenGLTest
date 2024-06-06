@@ -900,9 +900,9 @@ namespace GLTF {
 		void Asset(type_json_object const& asset) {
 			Property(FILE_FUNCTION_LINE, asset);
 			String(FILE_FUNCTION_LINE, asset, Constants::VERSION, &Validator::AssetVersion, true);
-String(FILE_FUNCTION_LINE, asset, Constants::MIN_VERSION, &Validator::AssetVersion);
-String(FILE_FUNCTION_LINE, asset, Constants::COPYRIGHT);
-String(FILE_FUNCTION_LINE, asset, Constants::GENERATOR);
+			String(FILE_FUNCTION_LINE, asset, Constants::MIN_VERSION, &Validator::AssetVersion);
+			String(FILE_FUNCTION_LINE, asset, Constants::COPYRIGHT);
+			String(FILE_FUNCTION_LINE, asset, Constants::GENERATOR);
 		}
 
 
@@ -1236,7 +1236,14 @@ String(FILE_FUNCTION_LINE, asset, Constants::GENERATOR);
 
 		void SceneNode(CALLBACK_ARRAY_ARGS) {
 			ArrayUniqueIntegers(messagePreamble, object, jsonArray);
-			for (type_json_element const& element : jsonArray->values);
+			for (type_json_element const& element : jsonArray->values) {
+				if (element->type != JsonParse::JsonInteger::Class_Type()) {
+					errors.push_back(GLTFError(object, element, ErrorMessageStart(messagePreamble)));
+				}
+				else {
+
+				}
+			}
 		}
 
 		void Scene(type_json_object const& scene) {
