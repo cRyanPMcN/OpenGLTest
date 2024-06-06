@@ -218,49 +218,54 @@ GLTFObject Load_GLTF_File(std::filesystem::path const& path) {
 	if (path.extension() == ".gltf") {
 		// Load directly;
 		JsonParse::JsonFile file(path);
-		PathCurrentSetTemporary tempChange(path.parent_path());
-		if (file.rootNode->type != JsonParse::JsonObject::Class_Type()) {
-			// Error
+		try {
+			std::pair<std::shared_ptr<JsonParse::JsonElement>, JsonParse::JsonFile::Statistics> t = JsonParse::JsonFile::Parse_Json(path);
+			if (t.first->type == JsonParse::Type::Object) {
+				PathCurrentSetTemporary tempChange(path.parent_path());
+				std::shared_ptr<JsonParse::JsonObject> object = std::static_pointer_cast<JsonParse::JsonObject>(t.first);
+				GLTF::Validator validate(object);
+				if (validate.errors.empty()) {
+					GLTF::GLTFDoc doc(object);
+					//GLSampler samplers(doc.samplers);
+					std::vector<std::shared_ptr<GLSampler>> samplers;
+					std::vector<std::shared_ptr<GLCamera>> cameras;
+					std::vector<std::shared_ptr<GLBufferData>> bufferData;
+					std::vector<std::shared_ptr<Buffer>> buffers;
+					GLTF::Accessor acc = doc.accessors[0];
+					
+					for (GLTF::Camera const& camera : doc.cameras) {
+						cameras.emplace_back(std::make_shared<GLCamera>(camera));
+					}
+
+					for (GLTF::Buffer const& buffer : doc.buffers) {
+						bufferData.emplace_back(std::make_shared<GLBufferData>(buffer));
+					}
+
+					for (GLTF::BufferView const& bufferView : doc.bufferViews) {
+
+					}
+
+					for (GLTF::Sampler const& sampler : doc.samplers) {
+						samplers.emplace_back(std::make_shared<GLSampler>(sampler));
+					}
+
+					for (GLTF::Image const& image : doc.images) {
+						if (image.uri.empty()) {
+							// Expect bufferView
+						}
+						else {
+							// Expect URI
+						}
+					}
+
+					//int width, height, nrChannels;
+					//stbi_set_flip_vertically_on_load(true);
+					//unsigned char* data = stbi_load("./container.jpg", &width, &height, &nrChannels, 0);
+
+				}
+			}
 		}
-
-		std::shared_ptr<JsonParse::JsonObject> object = std::static_pointer_cast<JsonParse::JsonObject>(file.rootNode);
-		GLTF::Validator validate(object);
-		if (validate.errors.empty()) {
-			GLTF::GLTFDoc doc(object);
-			//GLSampler samplers(doc.samplers);
-			std::vector<std::shared_ptr<GLSampler>> samplers;
-			std::vector<std::shared_ptr<GLCamera>> cameras;
-			std::vector<std::shared_ptr<GLBufferData>> bufferData;
-			std::vector<std::shared_ptr<Buffer>> buffers;
-
-			for (GLTF::Camera const& camera : doc.cameras) {
-				cameras.emplace_back(std::make_shared<GLCamera>(camera));
-			}
-
-			for (GLTF::Buffer const& buffer : doc.buffers) {
-				bufferData.emplace_back(std::make_shared<GLBufferData>(buffer));
-			}
-
-			for (GLTF::BufferView const& bufferView : doc.bufferViews) {
-
-			}
-
-			for (GLTF::Sampler const& sampler : doc.samplers) {
-				samplers.emplace_back(std::make_shared<GLSampler>(sampler));
-			}
-
-			for (GLTF::Image const& image : doc.images) {
-				if (image.uri.empty()) {
-					// Expect bufferView
-				}
-				else {
-					// Expect URI
-				}
-			}
-
-			//int width, height, nrChannels;
-			//stbi_set_flip_vertically_on_load(true);
-			//unsigned char* data = stbi_load("./container.jpg", &width, &height, &nrChannels, 0);
+		catch (...) {
 
 		}
 	}
@@ -526,7 +531,7 @@ int main(void) {
 			myShader.SetVec3("modelPosition", modelPosition);
 			myShader.SetVec4("modelOrientation", modelRotate);
 
-			glDrawElements(GL_TRIANGLES, vertArray.bufferIndex->subBuffers[0].subBufferSize, GL_UNSIGNED_INT, nullptr);
+			//glDrawElements(GL_TRIANGLES, vertArray.bufferIndex->subBuffers[0].subBufferSize, GL_UNSIGNED_INT, nullptr);
 			//glDrawArrays(GL_TRIANGLES, 0, 36);
 		//}
 		
