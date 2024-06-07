@@ -1236,10 +1236,15 @@ namespace GLTF {
 			ArrayUniqueIntegers(messagePreamble, object, jsonArray);
 			for (type_json_element const& element : jsonArray->values) {
 				if (element->type != JsonParse::JsonInteger::Class_Type()) {
-					errors.push_back(GLTFError(object, element, ErrorMessageStart(messagePreamble)));
+					errors.push_back(GLTFError(object, element, ErrorTypeMismatch(messagePreamble, JsonParse::Type::Integer, element->type)));
 				}
 				else {
-
+					integer_type value = std::static_pointer_cast<JsonParse::JsonInteger>(element)->value;
+					if (value < 0 || value >= static_cast<integer_type>(arraySizes[Constants::NODES])) {
+						errors.push_back(GLTFError(object, element, 
+							ErrorMessageValue(messagePreamble, 
+								std::static_pointer_cast<JsonParse::JsonInteger>(element)) + " must be >= 0, and < " + Constants::NODES + ".size()=" + std::to_string(arraySizes[Constants::NODES]) + "."));
+					}
 				}
 			}
 		}
