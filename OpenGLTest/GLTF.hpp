@@ -1251,7 +1251,6 @@ namespace GLTF {
 
 		void Scene(type_json_object const& scene) {
 			ChildProperty(FILE_FUNCTION_LINE, scene);
-			ArrayOfIntegers(FILE_FUNCTION_LINE, scene, Constants::NODES, &Validator::GreaterEqualZero);
 			Array(FILE_FUNCTION_LINE, scene, Constants::NODES, &Validator::SceneNode);
 		}
 
