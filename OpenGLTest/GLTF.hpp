@@ -618,7 +618,7 @@ namespace GLTF {
 					type_json_integer integer = std::static_pointer_cast<JsonParse::JsonInteger>(result);
 					GreaterEqualZero(messagePreamble, object, integer);
 					if (integer->value >= static_cast<integer_type>(arraySizes[arrayName])) {
-						errors.push_back(GLTFError(object, result, ErrorMessageValue(messagePreamble, integer) + " must be >= 0, and < " + arrayName + ".size()=" + std::to_string(arraySizes[arrayName]) + "."));
+						errors.push_back(GLTFError(object, result, ErrorMessageValue(messagePreamble, integer) + " must be >= 0, and < " + arrayName + ".size():" + std::to_string(arraySizes[arrayName]) + "."));
 					}
 				}
 				else {
@@ -718,7 +718,7 @@ namespace GLTF {
 		void AccessorBufferView(CALLBACK_INTEGER_ARGS(accessor)) {
 			GreaterEqualZero(messagePreamble, accessor, element);
 			if (element->value >= static_cast<integer_type>(arraySizes[Constants::BUFFER_VIEWS])) {
-				errors.push_back(GLTFError(accessor, element, ErrorMessageValue(messagePreamble, element) + " must be >= 0, and < meshes.size()=" + std::to_string(arraySizes[Constants::BUFFER_VIEWS]) + "."));
+				errors.push_back(GLTFError(accessor, element, ErrorMessageValue(messagePreamble, element) + " must be >= 0, and < meshes.size():" + std::to_string(arraySizes[Constants::BUFFER_VIEWS]) + "."));
 			}
 			++(referencesAccessorToBufferView[element->value]);
 		}
@@ -1001,7 +1001,7 @@ namespace GLTF {
 		void ImageBufferView(CALLBACK_INTEGER_ARGS(image)) {
 			GreaterEqualZero(messagePreamble, image, element);
 			if (element->value < 0 || element->value >= arraySizes[Constants::BUFFER_VIEWS]) {
-				errors.push_back(GLTFError(image, element, ErrorMessageValue(messagePreamble, element) + " must be >= 0, and < bufferViews.size()=" + std::to_string(arraySizes[Constants::BUFFER_VIEWS]) + "."));
+				errors.push_back(GLTFError(image, element, ErrorMessageValue(messagePreamble, element) + " must be >= 0, and < bufferViews.size():" + std::to_string(arraySizes[Constants::BUFFER_VIEWS]) + "."));
 			}
 			String(messagePreamble, image, Constants::MIME_TYPE, &Validator::ImageMimeType, true);
 		}
@@ -1129,7 +1129,7 @@ namespace GLTF {
 			Integer(FILE_FUNCTION_LINE, primitive, Constants::INDICES, &Validator::GreaterEqualZero);
 			Integer(FILE_FUNCTION_LINE, primitive, Constants::MATERIAL, &Validator::GreaterEqualZero);
 			if (ArraySize(primitive, Constants::TARGETS) != sizeMeshWeights.back()) {
-				errors.push_back(GLTFError(primitive, primitive->Find(Constants::TARGETS), ErrorMessageStart(FILE_FUNCTION_LINE) + " targets.size() must be equal to mesh.weights.size()=" + std::to_string(sizeMeshWeights.back())));
+				errors.push_back(GLTFError(primitive, primitive->Find(Constants::TARGETS), ErrorMessageStart(FILE_FUNCTION_LINE) + " targets.size() must be equal to mesh.weights.size():" + std::to_string(sizeMeshWeights.back())));
 			}
 			ArrayOfObjects(FILE_FUNCTION_LINE, primitive, Constants::TARGETS);
 		}
@@ -1155,7 +1155,7 @@ namespace GLTF {
 				}
 			}
 			else {
-				errors.push_back(GLTFError(node, element, ErrorMessageValue(messagePreamble, element) + " must be >= 0, and < meshes.size()=" + std::to_string(arraySizes[Constants::MESHES]) + "."));
+				errors.push_back(GLTFError(node, element, ErrorMessageValue(messagePreamble, element) + " must be >= 0, and < meshes.size():" + std::to_string(arraySizes[Constants::MESHES]) + "."));
 			}
 		}
 
@@ -1243,7 +1243,7 @@ namespace GLTF {
 					if (value < 0 || value >= static_cast<integer_type>(arraySizes[Constants::NODES])) {
 						errors.push_back(GLTFError(object, element, 
 							ErrorMessageValue(messagePreamble, 
-								std::static_pointer_cast<JsonParse::JsonInteger>(element)) + " must be >= 0, and < " + Constants::NODES + ".size()=" + std::to_string(arraySizes[Constants::NODES]) + "."));
+								std::static_pointer_cast<JsonParse::JsonInteger>(element)) + " must be >= 0, and < " + Constants::NODES + ".size():" + std::to_string(arraySizes[Constants::NODES]) + "."));
 					}
 				}
 			}
