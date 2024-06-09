@@ -143,6 +143,7 @@ namespace GLTF {
 		// Animation
 		const static std::string CHANNELS = "channels";
 		const static std::string SAMPLER = "sampler";
+		const static std::string ANIMATION_SAMPLERS = "animation_samplers"; // Used in validator to separate the GLTF::SAMPLERS from GLTF::ANIMATION::SAMPLERS
 		const static std::string TARGET = "target";
 		const static std::string NODE = "node";
 		const static std::string PATH = "path";
@@ -866,7 +867,7 @@ namespace GLTF {
 
 		void AnimationChannel(type_json_object const& channel) {
 			Property(FILE_FUNCTION_LINE, channel);
-			Index(FILE_FUNCTION_LINE, channel, Constants::SAMPLER, Constants::SAMPLERS, true);
+			Index(FILE_FUNCTION_LINE, channel, Constants::SAMPLER, Constants::ANIMATION_SAMPLERS, true);
 			Object(FILE_FUNCTION_LINE, channel, Constants::TARGET, &Validator::AnimationChannelTarget, true);
 		}
 
@@ -885,6 +886,7 @@ namespace GLTF {
 
 		void Animation(type_json_object const& animation) {
 			ChildProperty(FILE_FUNCTION_LINE, animation);
+			arraySizes[Constants::ANIMATION_SAMPLERS] = ArraySize(animation, Constants::SAMPLERS);
 			ArrayOfObjects(FILE_FUNCTION_LINE, animation, Constants::CHANNELS, &Validator::AnimationChannel, true);
 			ArrayOfObjects(FILE_FUNCTION_LINE, animation, Constants::SAMPLERS, &Validator::AnimationSampler, true);
 		}
