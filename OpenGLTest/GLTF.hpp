@@ -149,7 +149,9 @@ namespace GLTF {
 		const static std::string PATH = "path";
 		const static std::string INPUT = "input";
 		const static std::string INTERPOLATION = "interpolation";
-		const static std::string DEFAULT_INTERPOLATION = "LINEAR";
+		const static std::string INTERPOLATION_LINEAR = "LINEAR";
+		const static std::string INTERPOLATION_ROTATION = "ROTATION";
+		const static std::string DEFAULT_INTERPOLATION = INTERPOLATION_LINEAR;
 		const static std::string OUTPUT = "output";
 
 		// Buffer
@@ -748,7 +750,8 @@ namespace GLTF {
 			}
 
 			size_t idx = 0;
-			for (type_json_element const& value : jsonArray->values) {
+			for (size_t idx = 0; idx < jsonArray->values.size(); ++idx) {
+				type_json_element const& value = jsonArray->values[idx];
 				if (value->type != JsonParse::Type::Number && value->type != JsonParse::Type::Integer) {
 					errors.push_back(GLTFError(object, jsonArray, ErrorArrayTypeMismatchNumber(messagePreamble, idx, value->type)));
 				}
@@ -855,7 +858,7 @@ namespace GLTF {
 
 		void AnimationChannelTargetPath(CALLBACK_STRING_ARGS(target)) {
 			if (element->value != Constants::TRANSLATION && element->value != Constants::ROTATION && element->value != Constants::SCALE && element->value != Constants::WEIGHTS) {
-				errors.push_back(GLTFError(target, element, ErrorMessageValue(messagePreamble, element) + " must be 'translation', 'rotation', 'scale', or 'weights'."));
+				errors.push_back(GLTFError(target, element, ErrorMessageValue(messagePreamble, element) + " must be '" + Constants::TRANSLATION + "', '" + Constants::ROTATION + "', '" + Constants::SCALE+ "', or '" + Constants::WEIGHTS + "'."));
 			}
 		}
 
@@ -995,17 +998,8 @@ namespace GLTF {
 
 		void ImageMimeType(CALLBACK_STRING_ARGS(image)) {
 			if (element->value != Constants::MIME_IMAGE_JPEG && element->value != Constants::MIME_IMAGE_PNG) {
-				errors.push_back(GLTFError(image, element, ErrorMessageValue(messagePreamble, element) + " must be 'image/jpeg' or 'image/png'."));
-				//Index(FILE_FUNCTION_LINE, normalTexture, Constants::INDEX, Constants::IMAGES, true);
+				errors.push_back(GLTFError(image, element, ErrorMessageValue(messagePreamble, element) + " must be '" + Constants::MIME_IMAGE_JPEG + "' or '" + Constants::MIME_IMAGE_PNG + "'."));
 			}
-		}
-
-		void ImageBufferView(CALLBACK_INTEGER_ARGS(image)) {
-			GreaterEqualZero(messagePreamble, image, element);
-			if (element->value < 0 || element->value >= arraySizes[Constants::BUFFER_VIEWS]) {
-				errors.push_back(GLTFError(image, element, ErrorMessageValue(messagePreamble, element) + " must be >= 0, and < bufferViews.size():" + std::to_string(arraySizes[Constants::BUFFER_VIEWS]) + "."));
-			}
-			String(messagePreamble, image, Constants::MIME_TYPE, &Validator::ImageMimeType, true);
 		}
 
 		void Image(type_json_object const& image) {
@@ -1017,22 +1011,18 @@ namespace GLTF {
 					errors.push_back(GLTFError(image, image, ErrorMessageStart(FILE_FUNCTION_LINE) + " uri and bufferView cannot be defined together."));
 				}
 				else {
-					if (uri->type != JsonParse::Type::String) {
-						errors.push_back(GLTFError(image, uri, ErrorTypeMismatch(FILE_FUNCTION_LINE, JsonParse::Type::String, uri->type)));
-					}
+					String(FILE_FUNCTION_LINE, image, Constants::URI);
 				}
-				String(FILE_FUNCTION_LINE, image, Constants::URI);
 			}
 			else {
 				if (!bufferView) {
 					errors.push_back(GLTFError(image, image, ErrorMessageStart(FILE_FUNCTION_LINE) + " uri or bufferView must be defined."));
 				}
 				else {
-					Integer(FILE_FUNCTION_LINE, image, Constants::BUFFER_VIEW, &Validator::ImageBufferView);
+					Index(FILE_FUNCTION_LINE, image, Constants::BUFFER_VIEW, Constants::BUFFER_VIEWS);
 					String(FILE_FUNCTION_LINE, image, Constants::MIME_TYPE, &Validator::ImageMimeType, true);
 				}
 			}
-			Index(FILE_FUNCTION_LINE, image, Constants::BUFFER_VIEW, Constants::BUFFER_VIEWS);
 		}
 
 		void MaterialPBRMetallicRoughness(type_json_object const& pbrMetalRough) {
