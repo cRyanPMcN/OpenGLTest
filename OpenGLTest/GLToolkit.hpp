@@ -311,7 +311,7 @@ struct DataStreamBase64 {
 /// <summary>
 /// Loads data from a GLTF::Buffer object
 /// </summary>
-class GLBufferData : public Object {
+struct GLBufferData : public Object {
 
 	static std::vector<unsigned char> Load_Data_From_File(std::filesystem::path const& pathToFile) {
 		// Load a binary file and push directly to the bufferStorage
@@ -333,16 +333,14 @@ class GLBufferData : public Object {
 	}
 
 	static std::vector<unsigned char> Load_Data(GLTF::Buffer const& buffer) {
-		// Load a binary file and push directly to the bufferStorage
-		std::vector<unsigned char> retVal;
-
 		if (buffer.uri.find(GLTF::Constants::STREAM_DATA) == 0) {
 			DataStreamBase64 data(buffer.uri);
 			 
 			if (data.binaryData.size() != buffer.byteLength) {
 				throw std::runtime_error(FILE_FUNCTION_LINE + ": buffer data not of expected byteLength:" + std::to_string(buffer.byteLength) + ".");
 			}
-			retVal = data.binaryData;
+
+			return data.binaryData;
 		}
 		else {
 			// Assume URI is a file-path
@@ -357,64 +355,13 @@ class GLBufferData : public Object {
 			
 			// For relative paths the std::filesystem::current_path is expected 
 			//    to be set to the directory of the GLTF file that is being parsed
-			retVal = Load_Data_From_File(bufferPath);
+			std::vector<unsigned char> const data = Load_Data_From_File(bufferPath);
 
-			if (retVal.size() != buffer.byteLength) {
+			if (data.size() != buffer.byteLength) {
 				// exception, loaded data is not of expected size
 			}
+			return data;
 		}
-
-		return retVal;
-	}
-
-	std::vector<unsigned char> _data;
-public:
-	GLBufferData(GLTF::Buffer const& buffer) : Object(buffer.name), _data(Load_Data(buffer)) {
-
-	}
-
-	friend class GLBuffer;
-};
-
-/// <summary>
-/// Loads data from a GLDataSource object onto the GPU
-/// </summary>
-class GLBuffer {
-	GLuint _idBuffer;
-public:
-	struct BufferInfo {
-		const size_t lengthInBytes;
-		const size_t offsetInBytes;
-		const size_t stride;
-		// Currently supported as ARRAY_BUFFER and ELEMENT_ARRAY_BUFFER
-		// When linked to the VAO ELEMENT_ARRAY_BUFFER causes a call to glVertexArrayElementBuffer
-		const unsigned target; 
-
-		BufferInfo(GLTF::BufferView const& bufferView) : 
-			lengthInBytes(bufferView.byteLength), offsetInBytes(bufferView.byteOffset), 
-			stride(bufferView.byteStride), 
-			target(bufferView.target) {
-			
-		}
-	} bufferInfo;
-
-	GLBuffer(GLTF::BufferView const& bufferView) : bufferInfo(bufferView) {
-		glCreateBuffers(1, &_idBuffer);
-		glNamedBufferStorage(_idBuffer, bufferInfo.lengthInBytes, nullptr, GL_DYNAMIC_STORAGE_BIT);
-	}
-
-	GLBuffer(GLBuffer const&) = delete;
-	GLBuffer(GLBuffer&&) = default;
-
-	~GLBuffer() {
-		glDeleteBuffers(1, &_idBuffer);
-	}
-
-	GLBuffer& operator=(GLBuffer const&) = delete;
-	GLBuffer& operator=(GLBuffer&&) = default;
-
-	void SetData(GLBufferData const& bufferData) {
-		glNamedBufferSubData(_idBuffer, 0, bufferInfo.lengthInBytes, bufferData._data.data() + bufferInfo.offsetInBytes);
 	}
 };
 
@@ -422,37 +369,6 @@ class GLTexture;
 
 class GLSampler : public Object {
 	GLuint _idSampler;
-
-	//static GLint ConvertWrapToGLConstant(GLTF::Enumerations::SamplerWrap wrap) {
-	//	switch (wrap) {
-	//	case GLTF::Enumerations::SamplerWrap::REPEAT:
-	//		return GL_REPEAT;
-	//	case GLTF::Enumerations::SamplerWrap::MIRRORED_REPEAT:
-	//		return GL_MIRRORED_REPEAT;
-	//	case GLTF::Enumerations::SamplerWrap::CLAMP_TO_EDGE:
-	//		return GL_CLAMP_TO_EDGE;
-	//	default:
-	//		throw std::runtime_error("Unsupported SamplerWrap.");
-	//	}
-	//}
-	//static GLint ConvertFilterToGLConstant(GLTF::Enumerations::SamplerFilter filter) {
-	//	switch (filter) {
-	//	case GLTF::Enumerations::SamplerFilter::LINEAR:
-	//		return GL_LINEAR;
-	//	case GLTF::Enumerations::SamplerFilter::NEAREST:
-	//		return GL_NEAREST;
-	//	case GLTF::Enumerations::SamplerFilter::LINEAR_MIPMAP_LINEAR:
-	//		return GL_LINEAR_MIPMAP_LINEAR;
-	//	case GLTF::Enumerations::SamplerFilter::LINEAR_MIPMAP_NEAREST:
-	//		return GL_LINEAR_MIPMAP_NEAREST;
-	//	case GLTF::Enumerations::SamplerFilter::NEAREST_MIPMAP_LINEAR:
-	//		return GL_NEAREST_MIPMAP_LINEAR;
-	//	case GLTF::Enumerations::SamplerFilter::NEAREST_MIPMAP_NEAREST:
-	//		return GL_NEAREST_MIPMAP_NEAREST;
-	//	default:
-	//		throw std::runtime_error("Unsupported SamplerFilter.");
-	//	}
-	//}
 public:
 	GLSampler(GLTF::Sampler const& sampler) : _idSampler(0), Object(sampler.name) {
 		glCreateSamplers(1, &_idSampler);

@@ -139,6 +139,13 @@ namespace GLTF {
 		const static std::string SPARSE = "sparse";
 		const static std::string INDICES = "indices";
 		const static std::string VALUES = "values";
+		const static std::string SCALAR = "SCALAR";
+		const static std::string VEC2 = "VEC2";
+		const static std::string VEC3 = "VEC3";
+		const static std::string VEC4 = "VEC4";
+		const static std::string MAT2 = "MAT2";
+		const static std::string MAT3 = "MAT3";
+		const static std::string MAT4 = "MAT4";
 
 		// Animation
 		const static std::string CHANNELS = "channels";
@@ -1757,12 +1764,49 @@ namespace GLTF {
 	};
 
 	struct Accessor : public GLTFChildProperty {
+		enum Type : unsigned char {
+			Error = 0,
+			Scalar = 1,
+			Vec2,
+			Vec3,
+			Vec4,
+			Mat2x2,
+			Mat3x3,
+			Mat4x4
+		};
+
+		static Type Convert_To_Type(std::string const& typeString) {
+			if (typeString == Constants::SCALAR) {
+				return Type::Scalar;
+			}
+			if (typeString == Constants::VEC2) {
+				return Type::Vec2;
+			}
+			if (typeString == Constants::VEC3) {
+				return Type::Vec3;
+			}
+			if (typeString == Constants::VEC4) {
+				return Type::Vec4;
+			}
+			if (typeString == Constants::MAT2) {
+				return Type::Mat2x2;
+			}
+			if (typeString == Constants::MAT3) {
+				return Type::Mat3x3;
+			}
+			if (typeString == Constants::MAT4) {
+				return Type::Mat4x4;
+			}
+
+			return Type::Error;
+		}
 		index_type bufferView;
 		integer_type byteOffset = 0;
 		integer_type componentType;
 		bool normalized = false;
 		integer_type count;
-		std::string type;
+		Type type;
+		//std::string type;
 		std::vector<number_type> max, min;
 		//union Type {
 		//	number_type number[16];
@@ -1832,7 +1876,7 @@ namespace GLTF {
 			componentType(Get_Required_Value<JsonParse::JsonInteger>(FILE_FUNCTION_LINE, sourceObject, Constants::COMPONENT_TYPE)),
 			normalized(Get_Optional_Value<JsonParse::JsonBoolean>(sourceObject, Constants::NORMALIZED, false)),
 			count(Get_Required_Value<JsonParse::JsonInteger>(FILE_FUNCTION_LINE, sourceObject, Constants::COUNT)),
-			type(Get_Required_Value<JsonParse::JsonString>(FILE_FUNCTION_LINE, sourceObject, Constants::TYPE)) {
+			type(Convert_To_Type(Get_Required_Value<JsonParse::JsonString>(FILE_FUNCTION_LINE, sourceObject, Constants::TYPE))) {
 
 			Parse_Array_Of_Values<number_type, JsonParse::JsonNumber>(max, sourceObject, Constants::MAX);
 			Parse_Array_Of_Values<number_type, JsonParse::JsonNumber>(min, sourceObject, Constants::MIN);
@@ -1849,6 +1893,25 @@ namespace GLTF {
 
 		Accessor& operator=(Accessor const&) = default;
 		Accessor& operator=(Accessor&&) = default;
+
+		unsigned ComponentCount() {
+			switch (type) {
+			case Type::Scalar:
+				return 1;
+			case Type::Vec2:
+				return 2;
+			case Type::Vec3:
+				return 3;
+			case Type::Vec4:
+			case Type::Mat2x2:
+				return 4;
+			case Type::Mat3x3:
+				return 9;
+			case Type::Mat4x4:
+				return 16;
+			}
+			return 0;
+		}
 	};
 
 	struct Animation : public GLTFChildProperty {

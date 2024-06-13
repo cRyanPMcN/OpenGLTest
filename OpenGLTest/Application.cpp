@@ -186,6 +186,7 @@ struct GLTFObject {
 
 // Change the current path
 // Resets path on scope exit
+// Dangerous if used in multiple places
 struct PathCurrentSetTemporary {
 	const std::filesystem::path originalPath;
 	PathCurrentSetTemporary(std::filesystem::path const& path) : originalPath(std::filesystem::current_path()) {
@@ -227,22 +228,34 @@ GLTFObject Load_GLTF_File(std::filesystem::path const& path) {
 				if (validate.errors.empty()) {
 					GLTF::GLTFDoc doc(object);
 					//GLSampler samplers(doc.samplers);
+					struct BufferData {
+						std::vector<unsigned char> data;
+						size_t alignment;
+					};
+					std::vector<std::vector<unsigned char>> bufferData;
 					std::vector<std::shared_ptr<GLSampler>> samplers;
 					std::vector<std::shared_ptr<GLCamera>> cameras;
-					std::vector<std::shared_ptr<GLBufferData>> bufferData;
 					std::vector<std::shared_ptr<Buffer>> buffers;
-					GLTF::Accessor acc = doc.accessors[0];
-					
+
+					{
+						std::vector<std::vector<unsigned char>> rawBufferData;
+						for (GLTF::Buffer const& buffer : doc.buffers) {
+							rawBufferData.emplace_back(GLBufferData::Load_Data(buffer));
+						}
+
+						for (GLTF::BufferView const& bufferView : doc.bufferViews) {
+							bufferData.emplace_back(bufferData[bufferView.buffer].begin() + bufferView.byteOffset, bufferData[bufferView.buffer].begin() + bufferView.byteOffset + bufferView.byteLength);
+						}
+					}
+
+					//std::sort(std::cbegin(doc.accessors), std::cend(doc.accessors), [](GLTF::Accessor const& lhs, GLTF::Accessor const& rhs) { return lhs.bufferView < rhs.bufferView; });
+
+					for (GLTF::Accessor accessor : doc.accessors) {
+
+					}
+
 					for (GLTF::Camera const& camera : doc.cameras) {
 						cameras.emplace_back(std::make_shared<GLCamera>(camera));
-					}
-
-					for (GLTF::Buffer const& buffer : doc.buffers) {
-						bufferData.emplace_back(std::make_shared<GLBufferData>(buffer));
-					}
-
-					for (GLTF::BufferView const& bufferView : doc.bufferViews) {
-
 					}
 
 					for (GLTF::Sampler const& sampler : doc.samplers) {
@@ -257,11 +270,6 @@ GLTFObject Load_GLTF_File(std::filesystem::path const& path) {
 							// Expect URI
 						}
 					}
-
-					//int width, height, nrChannels;
-					//stbi_set_flip_vertically_on_load(true);
-					//unsigned char* data = stbi_load("./container.jpg", &width, &height, &nrChannels, 0);
-
 				}
 			}
 		}
