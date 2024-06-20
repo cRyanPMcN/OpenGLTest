@@ -90,6 +90,7 @@ namespace GLTF {
 			Unsigned_Byte = 5121,
 			Short = 5122,
 			Unsigned_Short = 5123,
+			Int = 5124,		// Not defined in GLTF
 			Unsigned_Int = 5125,
 			Float = 5126
 		};
@@ -703,9 +704,9 @@ namespace GLTF {
 			}
 		}
 
-		void RangeZeroToOne(CALLBACK_NUMBER_ARGS(node)) {
+		void RangeZeroToOne(CALLBACK_NUMBER_ARGS(object)) {
 			if (element->value < -1.0 || element->value > 1.0) {
-				errors.push_back(GLTFError(node, element, ErrorMessageValue(messagePreamble, element) + "must be >= -1.0 && <= 1.0."));
+				errors.push_back(GLTFError(object, element, ErrorMessageValue(messagePreamble, element) + "must be >= -1.0 && <= 1.0."));
 			}
 		}
 
@@ -1108,16 +1109,7 @@ namespace GLTF {
 		}
 
 		void MeshPrimitiveMode(CALLBACK_INTEGER_ARGS(primitive)) {
-			switch (element->value) {
-			case 0:
-			case 1:
-			case 2:
-			case 3:
-			case 4:
-			case 5:
-			case 6:
-				break;
-			default:
+			if (element->value < 0 || element->value > 6) {
 				errors.push_back(GLTFError(primitive, element, ErrorMessageValue(messagePreamble, element) + " must be 0, 1, 2, 3, 4, 5, or 6."));
 			}
 		}
@@ -1144,9 +1136,10 @@ namespace GLTF {
 		}
 
 		void NodeMesh(CALLBACK_INTEGER_ARGS(node)) {
-			GreaterEqualZero(messagePreamble, node, element);
+			//GreaterEqualZero(messagePreamble, node, element);
 			size_t sizeWeights = ArraySize(node, Constants::WEIGHTS);
 			if (element->value > 0 && element->value < static_cast<integer_type>(arraySizes[Constants::MESHES])) {
+				// lik dis if u cri everityme
 				if (sizeMeshWeights[element->value] != sizeWeights) {
 					errors.push_back(GLTFError(node, element, ErrorMessageValue(messagePreamble, element) + " meshIndex:" + std::to_string(element->value) +
 						" node.weights.size():" + std::to_string(sizeWeights) + " must be equal to "
@@ -1673,11 +1666,10 @@ namespace GLTF {
 		type_json_element foundElement = object->Find(elementName);
 		if (foundElement && foundElement->type == JsonParse::Type::Array) {
 			type_json_array jArray = std::static_pointer_cast<JsonParse::JsonArray>(foundElement);
-			if (jArray->values.size() < count) {
+			if (jArray->values.size() != count) {
 				throw GltfArraySizeMismatch(object, messagePreamble + ": element \"" + elementName + "\" array does not contain " + std::to_string(count) + " elements.");
 			}
 			std::vector<number_type> hold(count, number_type(0));
-			//number_type* hold = new number_type[count];
 			int idx = 0;
 			for (size_t idx = 0; idx < count; ++idx) {
 				if (jArray->values[idx]->type == JsonParse::Type::Number) {
@@ -1695,7 +1687,6 @@ namespace GLTF {
 				}
 			}
 			memcpy_s(destination, count, hold.data(), count);
-			//delete[] hold;
 		}
 		else {
 			if (required) {
@@ -1894,7 +1885,7 @@ namespace GLTF {
 		Accessor& operator=(Accessor const&) = default;
 		Accessor& operator=(Accessor&&) = default;
 
-		unsigned ComponentCount() {
+		unsigned ComponentCount() const {
 			switch (type) {
 			case Type::Scalar:
 				return 1;
@@ -1911,6 +1902,26 @@ namespace GLTF {
 				return 16;
 			}
 			return 0;
+		}
+
+		unsigned BytesPerComponent() const {
+			switch (componentType) {
+			case Enumerations::ComponentType::Byte:
+			case Enumerations::ComponentType::Unsigned_Byte:
+				return 1;
+			case Enumerations::ComponentType::Short:
+			case Enumerations::ComponentType::Unsigned_Short:
+				return 2;
+			case Enumerations::ComponentType::Int:
+			case Enumerations::ComponentType::Unsigned_Int:
+			case Enumerations::ComponentType::Float:
+				return 4;
+			}
+			return 0;
+		}
+
+		integer_type ByteLength() const {
+			return count * ComponentCount() * BytesPerComponent();
 		}
 	};
 
@@ -2541,4 +2552,10 @@ namespace GLTF {
 	};
 }
 
+
+#undef CALLBACK_ARGS
+#undef CALLBACK_INTEGER_ARGS
+#undef CALLBACK_NUMBER_ARGS
+#undef CALLBACK_STRING_ARGS
+#undef CALLBACK_ARRAY_ARGS
 #undef FILE_FUNCTION_LINE

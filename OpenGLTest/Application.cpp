@@ -181,19 +181,23 @@ void Callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei le
 #include "GLToolkit.hpp"
 
 struct GLTFObject {
-
+	
 };
+#include <mutex>
 
 // Change the current path
 // Resets path on scope exit
 // Dangerous if used in multiple places
 struct PathCurrentSetTemporary {
 	const std::filesystem::path originalPath;
-	PathCurrentSetTemporary(std::filesystem::path const& path) : originalPath(std::filesystem::current_path()) {
+	//const std::filesystem::path changedPath;
+	PathCurrentSetTemporary(std::filesystem::path const& path) : originalPath(std::filesystem::current_path())/*, changedPath(path)*/ {
 		std::filesystem::current_path(path);
 	}
 
 	~PathCurrentSetTemporary() {
+		//if (std::filesystem::current_path() == changedPath) {
+		//}
 		std::filesystem::current_path(originalPath);
 	}
 };
@@ -227,14 +231,43 @@ GLTFObject Load_GLTF_File(std::filesystem::path const& path) {
 				GLTF::Validator validate(object);
 				if (validate.errors.empty()) {
 					GLTF::GLTFDoc doc(object);
-					//GLSampler samplers(doc.samplers);
+
+					std::vector<std::shared_ptr<GLCamera>> cameras;
+					struct GLNode;
+					struct GLSkin {
+						size_t inverseBindMatricesAccessor;
+						std::shared_ptr<GLNode> skeleton;
+						std::vector<std::shared_ptr<GLNode>> joints;
+						std::string name;
+					};
+					struct GLNode {
+						std::vector<std::shared_ptr<GLNode>> children;
+						std::shared_ptr<GLSkin> skin;
+					};
+					//std::vector<GLTFScene> scenes;
+
+					// Cameras can be front-loaded easily
+					for (GLTF::Camera const& camera : doc.cameras) {
+						cameras.emplace_back(std::make_shared<GLCamera>(camera));
+					}
+
+					for (GLTF::Scene const& scene : doc.scenes) {
+
+					}
+
+					for (GLTF::Node const& node : doc.nodes) {
+						size_t count = node.weights.size();
+						for (GLTF::Mesh::Primitive const& primitive : doc.meshes[node.mesh].primitives) {
+
+						}
+					}
+
 					struct BufferData {
 						std::vector<unsigned char> data;
 						size_t alignment;
 					};
 					std::vector<std::vector<unsigned char>> bufferData;
 					std::vector<std::shared_ptr<GLSampler>> samplers;
-					std::vector<std::shared_ptr<GLCamera>> cameras;
 					std::vector<std::shared_ptr<Buffer>> buffers;
 
 					{
@@ -244,18 +277,27 @@ GLTFObject Load_GLTF_File(std::filesystem::path const& path) {
 						}
 
 						for (GLTF::BufferView const& bufferView : doc.bufferViews) {
-							bufferData.emplace_back(bufferData[bufferView.buffer].begin() + bufferView.byteOffset, bufferData[bufferView.buffer].begin() + bufferView.byteOffset + bufferView.byteLength);
+							bufferData.emplace_back(rawBufferData[bufferView.buffer].begin() + bufferView.byteOffset, rawBufferData[bufferView.buffer].begin() + bufferView.byteOffset + bufferView.byteLength);
 						}
 					}
 
 					//std::sort(std::cbegin(doc.accessors), std::cend(doc.accessors), [](GLTF::Accessor const& lhs, GLTF::Accessor const& rhs) { return lhs.bufferView < rhs.bufferView; });
 
+					// Accessors are buffers, accessors defined where the data comes from
 					for (GLTF::Accessor accessor : doc.accessors) {
+						std::vector<unsigned char> data;
+						// Standard Accessor
+						if (!accessor.sparse.definedInFile) {
+							data.reserve(accessor.ByteLength());
+							if (accessor.bufferView != -1) {
+								std::vector<unsigned char>::const_iterator dataSource = bufferData[accessor.bufferView].begin() + accessor.byteOffset;
+								data.insert(data.begin(), dataSource, dataSource + accessor.ByteLength());
+							}
+						}
+						// Sparse Accessor
+						else {
 
-					}
-
-					for (GLTF::Camera const& camera : doc.cameras) {
-						cameras.emplace_back(std::make_shared<GLCamera>(camera));
+						}
 					}
 
 					for (GLTF::Sampler const& sampler : doc.samplers) {
