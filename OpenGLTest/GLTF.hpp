@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <unordered_set>
+#include <unordered_map>
 #include <map>
 #include <memory>
 #include <regex>
@@ -297,7 +299,7 @@ namespace GLTF {
 		class ManageBreadCrumb {
 			Validator& _validator;
 		public:
-			ManageBreadCrumb(Validator* validator, std::string const& elementName) : _validator(*validator) {
+			ManageBreadCrumb(Validator& validator, std::string const& elementName) : _validator(validator) {
 				_validator.nameBreadCrumbs.push_back(elementName);
 			}
 
@@ -336,20 +338,24 @@ namespace GLTF {
 		std::map<index_type, integer_type> referencesAccessorToBufferView;
 		std::vector<AccessorInfo> accessorsInfo;
 		std::vector<AccessorInfo>::iterator accessorsIterator;
+		// Stores Mesh.Weights.size() or Mesh.Primitives[0].Targets.size()
 		std::vector<size_t> sizeMeshWeights;
+		size_t expectedTargetSize;
+		// Track the mesh.primitives[].attributes[] for checking primitive.targets[]
+		// Is reset after each mesh.primitive is finished
+		std::unordered_set<std::string> meshPrimitiveAttributes;
 		size_t bufferViewIdx;
-		bool firstBuffer;
 		// Used to generate error messages with a hierarchy to the error
 		std::vector<std::string> nameBreadCrumbs;
 
-		Validator(type_json_object const& rootObject) : bufferViewIdx(0), sizeArrayJoints(0), firstBuffer(true) {
+		Validator(type_json_object const& rootObject) : bufferViewIdx(0), sizeArrayJoints(0) {
 			Root(rootObject);
 			referencesAccessorToBufferView.clear();
 			accessorsInfo.clear();
 			sizeMeshWeights.clear();
 		}
 
-		Validator(type_json_object const& rootObject, std::map<std::string, void(*)(Validator&, type_json_object const&)> _extensionHandlers) : extensionHandlers(_extensionHandlers), bufferViewIdx(0), sizeArrayJoints(0), firstBuffer(true) {
+		Validator(type_json_object const& rootObject, std::map<std::string, void(*)(Validator&, type_json_object const&)> _extensionHandlers) : extensionHandlers(_extensionHandlers), bufferViewIdx(0), sizeArrayJoints(0) {
 			Root(rootObject);
 			referencesAccessorToBufferView.clear();
 			accessorsInfo.clear();
@@ -410,7 +416,7 @@ namespace GLTF {
 		}
 
 		size_t ArraySize(type_json_object const& object, std::string const& elementName) {
-			ManageBreadCrumb crumbs(this, elementName);
+			ManageBreadCrumb crumbs(*this, elementName);
 			type_json_element result = object->Find(elementName);
 			if (result) {
 				if (result->type == JsonParse::Type::Array) {
@@ -462,7 +468,7 @@ namespace GLTF {
 		template <class..._ArgsTy>
 		void Array(std::string const& messagePreamble, type_json_object const& object, std::string const& elementName,
 			callback_array<_ArgsTy...> callback, _ArgsTy...args) {
-			ManageBreadCrumb crumbs(this, elementName);
+			ManageBreadCrumb crumbs(*this, elementName);
 			type_json_element result = object->Find(elementName);
 			if (result && result->type == JsonParse::Type::Array) {
 				std::invoke(callback, *this, messagePreamble, object, std::static_pointer_cast<JsonParse::JsonArray>(result), args...);
@@ -471,7 +477,7 @@ namespace GLTF {
 
 		void ArrayOfObjects(std::string const& messagePreamble, type_json_object const& object, std::string const& elementName,
 			void(Validator::* callback)(type_json_object const&) = nullptr, bool required = false) {
-			ManageBreadCrumb crumbs(this, elementName);
+			ManageBreadCrumb crumbs(*this, elementName);
 			type_json_element result = object->Find(elementName);
 			if (result) {
 				if (result->type != JsonParse::Type::Array) {
@@ -493,7 +499,7 @@ namespace GLTF {
 
 		void ArrayOfNumbers(std::string const& messagePreamble, type_json_object const& object, std::string const& elementName,
 			callback_number callback = nullptr, bool required = false) {
-			ManageBreadCrumb crumbs(this, elementName);
+			ManageBreadCrumb crumbs(*this, elementName);
 			type_json_element result = object->Find(elementName);
 			if (result) {
 				if (result->type != JsonParse::Type::Array) {
@@ -531,7 +537,7 @@ namespace GLTF {
 
 		void ArrayOfIntegers(std::string const& messagePreamble, type_json_object const& object, std::string const& elementName,
 			callback_integer callback = nullptr, bool required = false) {
-			ManageBreadCrumb crumbs(this, elementName);
+			ManageBreadCrumb crumbs(*this, elementName);
 			type_json_element result = object->Find(elementName);
 			if (result) {
 				if (result->type != JsonParse::Type::Array) {
@@ -560,7 +566,7 @@ namespace GLTF {
 
 		void Object(std::string const& messagePreamble, type_json_object const& object, std::string const& elementName,
 			void(Validator::* callback)(type_json_object const&) = nullptr, bool required = false) {
-			ManageBreadCrumb crumbs(this, elementName);
+			ManageBreadCrumb crumbs(*this, elementName);
 			type_json_element result = object->Find(elementName);
 			if (result) {
 				if (result->type == JsonParse::Type::Object) {
@@ -581,7 +587,7 @@ namespace GLTF {
 
 		void String(std::string const& messagePreamble, type_json_object const& object, std::string const& elementName,
 			callback_string callback = nullptr, bool required = false) {
-			ManageBreadCrumb crumbs(this, elementName);
+			ManageBreadCrumb crumbs(*this, elementName);
 			type_json_element result = object->Find(elementName);
 			if (result) {
 				if (result->type == JsonParse::JsonString::Class_Type()) {
@@ -602,7 +608,7 @@ namespace GLTF {
 
 		void Integer(std::string const& messagePreamble, type_json_object const& object, std::string const& elementName,
 			callback_integer callback = nullptr, bool required = false) {
-			ManageBreadCrumb crumbs(this, elementName);
+			ManageBreadCrumb crumbs(*this, elementName);
 			type_json_element result = object->Find(elementName);
 			if (result) {
 				if (result->type == JsonParse::Type::Integer) {
@@ -622,7 +628,7 @@ namespace GLTF {
 		}
 
 		void Index(std::string const& messagePreamble, type_json_object const& object, std::string const& elementName, std::string const& arrayName, bool required = false) {
-			ManageBreadCrumb crumbs(this, elementName);
+			ManageBreadCrumb crumbs(*this, elementName);
 			type_json_element result = object->Find(elementName);
 			if (result) {
 				if (result->type == JsonParse::Type::Integer) {
@@ -645,7 +651,7 @@ namespace GLTF {
 
 		void Number(std::string const& messagePreamble, type_json_object const& object, std::string const& elementName,
 			callback_number callback = nullptr, bool required = false) {
-			ManageBreadCrumb crumb(this, elementName);
+			ManageBreadCrumb crumbs(*this, elementName);
 			type_json_element result = object->Find(elementName);
 			if (result) {
 				if (result->type == JsonParse::Type::Number) {
@@ -673,7 +679,7 @@ namespace GLTF {
 
 		void Boolean(std::string const& messagePreamble, type_json_object const& object, std::string const& elementName, bool required = false) {
 			type_json_element result = object->Find(elementName);
-			ManageBreadCrumb crumb(this, elementName);
+			ManageBreadCrumb crumbs(*this, elementName);
 			if (result) {
 				if (result->type != JsonParse::Type::Boolean) {
 					errors.push_back(GLTFError(object, result, ErrorTypeMismatch(messagePreamble, JsonParse::JsonBoolean::Class_Type(), result->type)));
@@ -721,7 +727,7 @@ namespace GLTF {
 			Object(messagePreamble, object, Constants::EXTRAS);
 		}
 
-		void ChildProperty(std::string const& messagePreamble, type_json_object const& object) {
+		void RootProperty(std::string const& messagePreamble, type_json_object const& object) {
 			Property(messagePreamble, object);
 			String(messagePreamble, object, Constants::NAME, nullptr);
 		}
@@ -742,7 +748,6 @@ namespace GLTF {
 			case Enumerations::ComponentType::Unsigned_Short:
 			case Enumerations::ComponentType::Unsigned_Int:
 			case Enumerations::ComponentType::Float:
-				accessorsIterator->componentType = (Enumerations::ComponentType)element->value;
 				break;
 			default:
 				errors.push_back(GLTFError(accessor, element, ErrorMessageValue(messagePreamble, element) + " must be " +
@@ -750,6 +755,7 @@ namespace GLTF {
 					std::to_string(Enumerations::ComponentType::Short) + ", " + std::to_string(Enumerations::ComponentType::Unsigned_Short) + ", " +
 					std::to_string(Enumerations::ComponentType::Unsigned_Int) + ", or " + std::to_string(Enumerations::ComponentType::Float) + "."));
 			}
+			accessorsIterator->componentType = (Enumerations::ComponentType)element->value;
 		}
 
 		void MaxMinArray(CALLBACK_ARRAY_ARGS, size_t expectedSize) {
@@ -852,7 +858,7 @@ namespace GLTF {
 		}
 
 		void Accessor(type_json_object const& accessor) {
-			ChildProperty(FILE_FUNCTION_LINE, accessor);
+			RootProperty(FILE_FUNCTION_LINE, accessor);
 			Integer(FILE_FUNCTION_LINE, accessor, Constants::BUFFER_VIEW, &Validator::AccessorBufferView, false);
 			Integer(FILE_FUNCTION_LINE, accessor, Constants::BYTE_OFFSET, &Validator::GreaterEqualZero, false);
 			Integer(FILE_FUNCTION_LINE, accessor, Constants::COMPONENT_TYPE, &Validator::AccessorComponentType, true);
@@ -896,7 +902,7 @@ namespace GLTF {
 		}
 
 		void Animation(type_json_object const& animation) {
-			ChildProperty(FILE_FUNCTION_LINE, animation);
+			RootProperty(FILE_FUNCTION_LINE, animation);
 			arraySizes[Constants::ANIMATION_SAMPLERS] = ArraySize(animation, Constants::SAMPLERS);
 			ArrayOfObjects(FILE_FUNCTION_LINE, animation, Constants::CHANNELS, &Validator::AnimationChannel, true);
 			ArrayOfObjects(FILE_FUNCTION_LINE, animation, Constants::SAMPLERS, &Validator::AnimationSampler, true);
@@ -920,10 +926,9 @@ namespace GLTF {
 
 
 		void Buffer(type_json_object const& buffer) {
-			ChildProperty(FILE_FUNCTION_LINE, buffer);
-			String(FILE_FUNCTION_LINE, buffer, Constants::URI, nullptr, !firstBuffer);
+			RootProperty(FILE_FUNCTION_LINE, buffer);
+			String(FILE_FUNCTION_LINE, buffer, Constants::URI);
 			Integer(FILE_FUNCTION_LINE, buffer, Constants::BYTE_LENGTH, &Validator::GreaterEqualOne, true);
-			firstBuffer = false;
 		}
 
 		void BufferViewByteStride(CALLBACK_INTEGER_ARGS(bufferView)) {
@@ -941,7 +946,7 @@ namespace GLTF {
 		}
 
 		void BufferView(type_json_object const& bufferView) {
-			ChildProperty(FILE_FUNCTION_LINE, bufferView);
+			RootProperty(FILE_FUNCTION_LINE, bufferView);
 			Index(FILE_FUNCTION_LINE, bufferView, Constants::BUFFER, Constants::BUFFERS, true);
 			Integer(FILE_FUNCTION_LINE, bufferView, Constants::BYTE_OFFSET, &Validator::GreaterEqualZero);
 			Integer(FILE_FUNCTION_LINE, bufferView, Constants::BYTE_LENGTH, &Validator::GreaterEqualOne, true);
@@ -949,10 +954,6 @@ namespace GLTF {
 			Integer(FILE_FUNCTION_LINE, bufferView, Constants::BYTE_STRIDE, &Validator::BufferViewByteStride, referencesAccessorToBufferView[bufferViewIdx] >= 2);
 			Integer(FILE_FUNCTION_LINE, bufferView, Constants::TARGET, &Validator::BufferViewTarget);
 			++bufferViewIdx;
-		}
-
-		void CameraZFarNear(CALLBACK_NUMBER_ARGS(camera)) {
-			GreaterEqualZero(messagePreamble, camera, element);
 		}
 
 		void CameraOrthographic(type_json_object const& orthographic) {
@@ -973,7 +974,7 @@ namespace GLTF {
 
 		void CameraType(CALLBACK_STRING_ARGS(camera)) {
 			if (element->value == Constants::ORTHOGRAPHIC) {
-				ManageBreadCrumb crumb(this, Constants::ORTHOGRAPHIC);
+				ManageBreadCrumb crumbs(*this, Constants::ORTHOGRAPHIC);
 				if (!camera->Find(Constants::ORTHOGRAPHIC)) {
 					errors.push_back(GLTFError(camera, nullptr, ErrorMessageStart(messagePreamble) + " must be defined when camera/type is '" + Constants::ORTHOGRAPHIC + "'."));
 				}
@@ -982,7 +983,7 @@ namespace GLTF {
 				}
 			}
 			else if (element->value == Constants::PERSPECTIVE) {
-				ManageBreadCrumb crumb(this, Constants::PERSPECTIVE);
+				ManageBreadCrumb crumbs(*this, Constants::PERSPECTIVE);
 				if (!camera->Find(Constants::PERSPECTIVE)) {
 					errors.push_back(GLTFError(camera, nullptr, ErrorMessageStart(messagePreamble) + " must be defined when camera/type is '" + Constants::PERSPECTIVE + "'."));
 				}
@@ -1000,7 +1001,7 @@ namespace GLTF {
 		}
 
 		void Camera(type_json_object const& camera) {
-			ChildProperty(FILE_FUNCTION_LINE, camera);
+			RootProperty(FILE_FUNCTION_LINE, camera);
 			String(FILE_FUNCTION_LINE, camera, Constants::TYPE, &Validator::CameraType, true);
 		}
 
@@ -1011,7 +1012,7 @@ namespace GLTF {
 		}
 
 		void Image(type_json_object const& image) {
-			ChildProperty(FILE_FUNCTION_LINE, image);
+			RootProperty(FILE_FUNCTION_LINE, image);
 			type_json_element uri = image->Find(Constants::URI), bufferView = image->Find(Constants::BUFFER_VIEW);
 
 			if (uri) {
@@ -1066,7 +1067,7 @@ namespace GLTF {
 		}
 
 		void Material(type_json_object const& material) {
-			ChildProperty(FILE_FUNCTION_LINE, material);
+			RootProperty(FILE_FUNCTION_LINE, material);
 			Object(FILE_FUNCTION_LINE, material, Constants::PBR_METALLIC_ROUGHNESS, &Validator::MaterialPBRMetallicRoughness);
 			Object(FILE_FUNCTION_LINE, material, Constants::NORMAL_TEXTURE, &Validator::MaterialNormalTexture);
 			Object(FILE_FUNCTION_LINE, material, Constants::OCCLUSION_TEXTURE, &Validator::MaterialOcclusionTexture);
@@ -1122,37 +1123,25 @@ namespace GLTF {
 			if (ArraySize(primitive, Constants::TARGETS) != sizeMeshWeights.back()) {
 				errors.push_back(GLTFError(primitive, primitive->Find(Constants::TARGETS), ErrorMessageStart(FILE_FUNCTION_LINE) + " targets.size() must be equal to mesh.weights.size():" + std::to_string(sizeMeshWeights.back())));
 			}
+			ArraySize(primitive, Constants::TARGETS);
 			ArrayOfObjects(FILE_FUNCTION_LINE, primitive, Constants::TARGETS);
 		}
 
 		void Mesh(type_json_object const& mesh) {
-			ChildProperty(FILE_FUNCTION_LINE, mesh);
-
-			size_t sizeOfMeshPrimitive;
-			Array<size_t&>(FILE_FUNCTION_LINE, mesh, Constants::WEIGHTS, &Validator::ArrayGetSize, std::ref(sizeOfMeshPrimitive));
-			sizeMeshWeights.push_back(sizeOfMeshPrimitive);
+			RootProperty(FILE_FUNCTION_LINE, mesh);
+			sizeMeshWeights.emplace_back(ArraySize(mesh, Constants::WEIGHTS));
 			ArrayOfNumbers(FILE_FUNCTION_LINE, mesh, Constants::WEIGHTS);
 			ArrayOfObjects(FILE_FUNCTION_LINE, mesh, Constants::PRIMITIVES, &Validator::MeshPrimitive, true);
 		}
 
 		void NodeMesh(CALLBACK_INTEGER_ARGS(node)) {
-			//GreaterEqualZero(messagePreamble, node, element);
-			size_t sizeWeights = ArraySize(node, Constants::WEIGHTS);
-			if (element->value > 0 && element->value < static_cast<integer_type>(arraySizes[Constants::MESHES])) {
-				// lik dis if u cri everityme
-				if (sizeMeshWeights[element->value] != sizeWeights) {
-					errors.push_back(GLTFError(node, element, ErrorMessageValue(messagePreamble, element) + " meshIndex:" + std::to_string(element->value) +
-						" node.weights.size():" + std::to_string(sizeWeights) + " must be equal to "
-						" mesh.weights.size():" + std::to_string(sizeMeshWeights[element->value]) + "."));
-				}
-			}
-			else {
+			if (element->value < 0 && element->value > static_cast<integer_type>(arraySizes[Constants::MESHES])) {
 				errors.push_back(GLTFError(node, element, ErrorMessageValue(messagePreamble, element) + " must be >= 0, and < meshes.size():" + std::to_string(arraySizes[Constants::MESHES]) + "."));
 			}
 		}
 
 		void Node(type_json_object const& node) {
-			ChildProperty(FILE_FUNCTION_LINE, node);
+			RootProperty(FILE_FUNCTION_LINE, node);
 			Index(FILE_FUNCTION_LINE, node, Constants::CAMERA, Constants::CAMERAS);
 			ArrayOfIntegers(FILE_FUNCTION_LINE, node, Constants::CHILDREN, &Validator::GreaterEqualZero);
 			Array(FILE_FUNCTION_LINE, node, Constants::CHILDREN, &Validator::ArrayUniqueIntegers);
@@ -1160,7 +1149,10 @@ namespace GLTF {
 			ArrayOfNumbers(FILE_FUNCTION_LINE, node, Constants::MATRIX);
 			Array(FILE_FUNCTION_LINE, node, Constants::MATRIX, &Validator::ArrayOfExpectedSize, size_t(16));
 
-			Integer(FILE_FUNCTION_LINE, node, Constants::MESH, &Validator::NodeMesh, node->Find(Constants::SKIN) != nullptr || node->Find(Constants::WEIGHTS) != nullptr);
+			expectedTargetSize = ArraySize(node, Constants::WEIGHTS);
+			// Index function is more accurate but Index does not have a function pointer argument
+			Integer(FILE_FUNCTION_LINE, node, Constants::MESH, &Validator::NodeMesh);
+			expectedTargetSize = 0;
 
 			ArrayOfNumbers(FILE_FUNCTION_LINE, node, Constants::ROTATION, &Validator::RangeZeroToOne);
 			Array(FILE_FUNCTION_LINE, node, Constants::ROTATION, &Validator::ArrayOfExpectedSize, size_t(4));
@@ -1217,7 +1209,7 @@ namespace GLTF {
 		}
 
 		void Sampler(type_json_object const& sampler) {
-			ChildProperty(FILE_FUNCTION_LINE, sampler);
+			RootProperty(FILE_FUNCTION_LINE, sampler);
 			Integer(FILE_FUNCTION_LINE, sampler, Constants::MAG_FILTER, &Validator::SamplerMagFilter);
 			Integer(FILE_FUNCTION_LINE, sampler, Constants::MIN_FILTER, &Validator::SamplerMinFilter);
 			Integer(FILE_FUNCTION_LINE, sampler, Constants::WRAP_S, &Validator::SamplerWrap);
@@ -1242,13 +1234,13 @@ namespace GLTF {
 		}
 
 		void Scene(type_json_object const& scene) {
-			ChildProperty(FILE_FUNCTION_LINE, scene);
+			RootProperty(FILE_FUNCTION_LINE, scene);
 			Array(FILE_FUNCTION_LINE, scene, Constants::NODES, &Validator::SceneNode);
 		}
 
 		void SkinBindMatrices(CALLBACK_INTEGER_ARGS(skin)) {
 			GreaterEqualZero(messagePreamble, skin, element);
-			if (element->value >= 0 && element->value < static_cast<integer_type>(accessorsInfo.size())) {
+			if (element->value >= 0 && element->value < arraySizes[Constants::ACCESSORS]) {
 				if (!(static_cast<decltype(sizeArrayJoints)>(accessorsInfo[element->value].count) >= sizeArrayJoints)) {
 					errors.push_back(GLTFError(skin, element,
 						ErrorMessageStart(messagePreamble) + ", accessorIndex:" + std::to_string(element->value) +
@@ -1262,7 +1254,7 @@ namespace GLTF {
 		}
 
 		void Skin(type_json_object const& skin) {
-			ChildProperty(FILE_FUNCTION_LINE, skin);
+			RootProperty(FILE_FUNCTION_LINE, skin);
 			sizeArrayJoints = 0;
 			ArrayOfIntegers(FILE_FUNCTION_LINE, skin, Constants::JOINTS, &Validator::GreaterEqualZero, true);
 			sizeArrayJoints = ArraySize(skin, Constants::JOINTS);
@@ -1272,7 +1264,7 @@ namespace GLTF {
 		}
 
 		void Texture(type_json_object const& texture) {
-			ChildProperty(FILE_FUNCTION_LINE, texture);
+			RootProperty(FILE_FUNCTION_LINE, texture);
 			Index(FILE_FUNCTION_LINE, texture, Constants::SAMPLER, Constants::SAMPLERS);
 			Integer(FILE_FUNCTION_LINE, texture, Constants::SOURCE, &Validator::GreaterEqualZero);
 		}
@@ -1284,7 +1276,7 @@ namespace GLTF {
 		}
 
 		void ExtensionsUsed(type_json_object const& rootObject) {
-			ManageBreadCrumb crumb(this, Constants::EXTENSIONS_USED);
+			ManageBreadCrumb crumbs(*this, Constants::EXTENSIONS_USED);
 			type_json_element element = rootObject->Find(Constants::EXTENSIONS_USED);
 			std::vector<std::string> used;
 
@@ -1320,7 +1312,7 @@ namespace GLTF {
 				}
 			}
 
-			// Check all extensions listed in the extensionsRequired element are used in the file
+			// Check all extensions listed in the extensiosUsed element are used in the file
 			// While this may not be an error it does however make the parsing of the file much simpler if one were to consider it an error
 			for (std::vector<std::string>::iterator begin = used.begin(); begin != endOfUnique; ++begin) {
 				if (extensionsInFile.find(*begin) == extensionsInFile.cend()) {
@@ -1334,7 +1326,7 @@ namespace GLTF {
 		}
 
 		void ExtensionsRequired(type_json_object const& rootObject) {
-			ManageBreadCrumb crumb(this, Constants::EXTENSIONS_REQUIRED);
+			ManageBreadCrumb crumbs(*this, Constants::EXTENSIONS_REQUIRED);
 			type_json_element element = rootObject->Find(Constants::EXTENSIONS_REQUIRED);
 			std::vector<std::string> required;
 
@@ -1374,30 +1366,26 @@ namespace GLTF {
 			}
 		}
 
-		void StoreArraySize(type_json_object const& object, std::string const& elementName) {
-			arraySizes[elementName] = ArraySize(object, elementName);
-		}
-
 		void Root(type_json_object const& rootObject) {
 			Property(FILE_FUNCTION_LINE, rootObject);
 			Object(FILE_FUNCTION_LINE, rootObject, Constants::ASSET, &Validator::Asset, true);
-			StoreArraySize(rootObject, Constants::ACCESSORS);
-			StoreArraySize(rootObject, Constants::ANIMATIONS);
-			StoreArraySize(rootObject, Constants::BUFFERS);
-			StoreArraySize(rootObject, Constants::BUFFER_VIEWS);
-			StoreArraySize(rootObject, Constants::CAMERAS);
-			StoreArraySize(rootObject, Constants::IMAGES);
-			StoreArraySize(rootObject, Constants::MATERIALS);
-			StoreArraySize(rootObject, Constants::MESHES);
-			StoreArraySize(rootObject, Constants::NODE);
-			StoreArraySize(rootObject, Constants::SAMPLERS);
-			StoreArraySize(rootObject, Constants::SCENES);
-			StoreArraySize(rootObject, Constants::SKINS);
-			StoreArraySize(rootObject, Constants::TEXTURES);
+			arraySizes[Constants::ACCESSORS] = ArraySize(rootObject, Constants::ACCESSORS);
+			arraySizes[Constants::ANIMATIONS] = ArraySize(rootObject, Constants::ANIMATIONS);
+			arraySizes[Constants::BUFFERS] = ArraySize(rootObject, Constants::BUFFERS);
+			arraySizes[Constants::BUFFER_VIEWS] = ArraySize(rootObject, Constants::BUFFER_VIEWS);
+			arraySizes[Constants::CAMERAS] = ArraySize(rootObject, Constants::CAMERAS);
+			arraySizes[Constants::IMAGES] = ArraySize(rootObject, Constants::IMAGES);
+			arraySizes[Constants::MATERIALS] = ArraySize(rootObject, Constants::MATERIALS);
+			arraySizes[Constants::MESHES] = ArraySize(rootObject, Constants::MESHES);
+			arraySizes[Constants::NODE] = ArraySize(rootObject, Constants::NODE);
+			arraySizes[Constants::SAMPLERS] = ArraySize(rootObject, Constants::SAMPLERS);
+			arraySizes[Constants::SCENES] = ArraySize(rootObject, Constants::SCENES);
+			arraySizes[Constants::SKINS] = ArraySize(rootObject, Constants::SKINS);
+			arraySizes[Constants::TEXTURES] = ArraySize(rootObject, Constants::TEXTURES);
 
 			accessorsInfo.resize(arraySizes[Constants::ACCESSORS]);
 			accessorsIterator = accessorsInfo.begin();
-			sizeMeshWeights.resize(arraySizes[Constants::MESHES]);
+			sizeMeshWeights.reserve(arraySizes[Constants::MESHES]);
 			ArrayOfObjects(FILE_FUNCTION_LINE, rootObject, Constants::ACCESSORS, &Validator::Accessor);
 			ArrayOfObjects(FILE_FUNCTION_LINE, rootObject, Constants::ANIMATIONS, &Validator::Animation);
 			ArrayOfObjects(FILE_FUNCTION_LINE, rootObject, Constants::BUFFERS, &Validator::Buffer);
@@ -1605,7 +1593,7 @@ namespace GLTF {
 	}
 
 	template <class _Ty, class _ExpectedTy>
-	void Parse_Array_Of_Values(std::vector<_Ty>& destination, type_json_object const& object, std::string const& elementName, bool required = false) {
+	void Parse_Array_Dynamic(std::vector<_Ty>& destination, type_json_object const& object, std::string const& elementName, bool required = false) {
 		type_json_element foundElement = object->Find(elementName);
 		if (foundElement && foundElement->type == JsonParse::Type::Array) {
 			type_json_array container = std::static_pointer_cast<JsonParse::JsonArray>(foundElement);
@@ -1632,7 +1620,7 @@ namespace GLTF {
 	}
 
 	template <>
-	void Parse_Array_Of_Values<number_type, JsonParse::JsonNumber>(std::vector<number_type>& destination, type_json_object const& object, std::string const& elementName, bool required) {
+	void Parse_Array_Dynamic<number_type, JsonParse::JsonNumber>(std::vector<number_type>& destination, type_json_object const& object, std::string const& elementName, bool required) {
 		type_json_element foundElement = object->Find(elementName);
 		if (foundElement && foundElement->type == JsonParse::Type::Array) {
 			type_json_array container = std::static_pointer_cast<JsonParse::JsonArray>(foundElement);
@@ -1721,19 +1709,19 @@ namespace GLTF {
 		GLTFProperty& operator=(GLTFProperty&&) = default;
 	};
 
-	struct _declspec(novtable) GLTFChildProperty : GLTFProperty {
+	struct _declspec(novtable) GLTFRootProperty : GLTFProperty {
 		std::string name;
 
-		GLTFChildProperty(type_json_object const& sourceObject) : GLTFProperty(sourceObject), name(Get_Optional_Value<JsonParse::JsonString>(sourceObject, Constants::NAME)) {
+		GLTFRootProperty(type_json_object const& sourceObject) : GLTFProperty(sourceObject), name(Get_Optional_Value<JsonParse::JsonString>(sourceObject, Constants::NAME)) {
 
 		}
 
-		GLTFChildProperty() = default;
-		GLTFChildProperty(GLTFChildProperty const&) = default;
-		GLTFChildProperty(GLTFChildProperty&&) = default;
+		GLTFRootProperty() = default;
+		GLTFRootProperty(GLTFRootProperty const&) = default;
+		GLTFRootProperty(GLTFRootProperty&&) = default;
 
-		GLTFChildProperty& operator=(GLTFChildProperty const&) = default;
-		GLTFChildProperty& operator=(GLTFChildProperty&&) = default;
+		GLTFRootProperty& operator=(GLTFRootProperty const&) = default;
+		GLTFRootProperty& operator=(GLTFRootProperty&&) = default;
 	};
 
 	struct TextureInfo : public GLTFProperty {
@@ -1754,7 +1742,7 @@ namespace GLTF {
 		TextureInfo& operator=(TextureInfo&&) = default;
 	};
 
-	struct Accessor : public GLTFChildProperty {
+	struct Accessor : public GLTFRootProperty {
 		enum Type : unsigned char {
 			Error = 0,
 			Scalar = 1,
@@ -1797,19 +1785,14 @@ namespace GLTF {
 		bool normalized = false;
 		integer_type count;
 		Type type;
-		//std::string type;
 		std::vector<number_type> max, min;
-		//union Type {
-		//	number_type number[16];
-		//	integer_type integer[16];
-		//} max, min;
 
 		struct Sparse : public GLTFProperty {
 			integer_type count = -1;
 			struct Index : public GLTFProperty {
 				index_type bufferView;
 				integer_type byteOffset = 0;
-				unsigned short componentType;
+				integer_type componentType;
 
 				Index(type_json_object const& sourceObject) : GLTFProperty(sourceObject),
 					bufferView(Get_Required_Value<JsonParse::JsonInteger>(FILE_FUNCTION_LINE, sourceObject, Constants::BUFFER_VIEW)),
@@ -1844,13 +1827,13 @@ namespace GLTF {
 				Value& operator=(Value&&) = default;
 			};
 
-			std::vector<Index> indices;
-			std::vector<Value> values;
+			Index indices;
+			Value values;
 
 			Sparse(type_json_object const& sourceObject) : GLTFProperty(sourceObject),
-				count(Get_Required_Value<JsonParse::JsonInteger>(FILE_FUNCTION_LINE, sourceObject, Constants::COUNT)) {
-				Parse_Array_Of_Objects<Index>(this->indices, sourceObject, Constants::INDICES);
-				Parse_Array_Of_Objects<Value>(this->values, sourceObject, Constants::VALUES);
+				count(Get_Required_Value<JsonParse::JsonInteger>(FILE_FUNCTION_LINE, sourceObject, Constants::COUNT)),
+				indices(Get_Required_Element<JsonParse::JsonObject>(FILE_FUNCTION_LINE, sourceObject, Constants::INDICES)),
+				values(Get_Required_Element<JsonParse::JsonObject>(FILE_FUNCTION_LINE, sourceObject, Constants::VALUES)) {
 			}
 
 			Sparse() = default;
@@ -1861,7 +1844,7 @@ namespace GLTF {
 			Sparse& operator=(Sparse&&) = default;
 		} sparse;
 
-		Accessor(type_json_object const& sourceObject) : GLTFChildProperty(sourceObject),
+		Accessor(type_json_object const& sourceObject) : GLTFRootProperty(sourceObject),
 			bufferView(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::BUFFER_VIEW, -1)),
 			byteOffset(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::BYTE_OFFSET)),
 			componentType(Get_Required_Value<JsonParse::JsonInteger>(FILE_FUNCTION_LINE, sourceObject, Constants::COMPONENT_TYPE)),
@@ -1869,8 +1852,8 @@ namespace GLTF {
 			count(Get_Required_Value<JsonParse::JsonInteger>(FILE_FUNCTION_LINE, sourceObject, Constants::COUNT)),
 			type(Convert_To_Type(Get_Required_Value<JsonParse::JsonString>(FILE_FUNCTION_LINE, sourceObject, Constants::TYPE))) {
 
-			Parse_Array_Of_Values<number_type, JsonParse::JsonNumber>(max, sourceObject, Constants::MAX);
-			Parse_Array_Of_Values<number_type, JsonParse::JsonNumber>(min, sourceObject, Constants::MIN);
+			Parse_Array_Dynamic<number_type, JsonParse::JsonNumber>(max, sourceObject, Constants::MAX);
+			Parse_Array_Dynamic<number_type, JsonParse::JsonNumber>(min, sourceObject, Constants::MIN);
 
 			type_json_object _sparse = Get_Optional_Element<JsonParse::JsonObject>(sourceObject, Constants::SPARSE);
 			if (_sparse) {
@@ -1925,7 +1908,7 @@ namespace GLTF {
 		}
 	};
 
-	struct Animation : public GLTFChildProperty {
+	struct Animation : public GLTFRootProperty {
 		struct Channel : public GLTFProperty {
 			index_type sampler;
 			struct Target : public GLTFProperty {
@@ -1983,7 +1966,7 @@ namespace GLTF {
 		std::vector<Channel> channels;
 		std::vector<Sampler> samplers;
 
-		Animation(type_json_object const& sourceObject) : GLTFChildProperty(sourceObject) {
+		Animation(type_json_object const& sourceObject) : GLTFRootProperty(sourceObject) {
 			Parse_Array_Of_Objects(channels, sourceObject, Constants::CHANNELS);
 			Parse_Array_Of_Objects(samplers, sourceObject, Constants::SAMPLERS);
 		}
@@ -2018,11 +2001,11 @@ namespace GLTF {
 		Asset& operator=(Asset&&) = default;
 	};
 
-	struct Buffer : public GLTFChildProperty {
+	struct Buffer : public GLTFRootProperty {
 		std::string uri;
 		integer_type byteLength;
 
-		Buffer(type_json_object const& sourceObject) : GLTFChildProperty(sourceObject),
+		Buffer(type_json_object const& sourceObject) : GLTFRootProperty(sourceObject),
 			uri(Get_Optional_Value<JsonParse::JsonString>(sourceObject, Constants::URI)),
 			byteLength(Get_Required_Value<JsonParse::JsonInteger>(FILE_FUNCTION_LINE, sourceObject, Constants::BYTE_LENGTH)) {
 
@@ -2036,7 +2019,7 @@ namespace GLTF {
 		Buffer& operator=(Buffer&&) = default;
 	};
 
-	struct BufferView : public GLTFChildProperty {
+	struct BufferView : public GLTFRootProperty {
 
 		// Required, Index To Buffer
 		index_type buffer;
@@ -2049,7 +2032,7 @@ namespace GLTF {
 		// Optional, defaults to Negative One(-1)
 		index_type target;
 
-		BufferView(type_json_object const& sourceObject) : GLTFChildProperty(sourceObject),
+		BufferView(type_json_object const& sourceObject) : GLTFRootProperty(sourceObject),
 			buffer(Get_Required_Value<JsonParse::JsonInteger>(FILE_FUNCTION_LINE, sourceObject, Constants::BUFFER)),
 			byteOffset(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::BYTE_OFFSET)),
 			byteLength(Get_Required_Value<JsonParse::JsonInteger>(FILE_FUNCTION_LINE, sourceObject, Constants::BYTE_LENGTH)),
@@ -2066,7 +2049,7 @@ namespace GLTF {
 		BufferView& operator=(BufferView&&) = default;
 	};
 
-	struct Camera : public GLTFChildProperty {
+	struct Camera : public GLTFRootProperty {
 		bool isPerspective = false;
 		struct Orthographic : public GLTFProperty {
 
@@ -2124,7 +2107,7 @@ namespace GLTF {
 
 		std::string type;
 
-		Camera(type_json_object const& sourceObject) : GLTFChildProperty(sourceObject),
+		Camera(type_json_object const& sourceObject) : GLTFRootProperty(sourceObject),
 			type(Get_Required_Value<JsonParse::JsonString>(FILE_FUNCTION_LINE, sourceObject, Constants::TYPE)) {
 			if (type == Constants::PERSPECTIVE) {
 				perspective = Perspective(Get_Required_Element<JsonParse::JsonObject>(FILE_FUNCTION_LINE, sourceObject, Constants::PERSPECTIVE));
@@ -2146,12 +2129,12 @@ namespace GLTF {
 		Camera& operator=(Camera&&) = default;
 	};
 
-	struct Image : public GLTFChildProperty {
+	struct Image : public GLTFRootProperty {
 		std::string uri;
 		std::string mimeType;
 		index_type bufferView;
 
-		Image(type_json_object const& sourceObject) : GLTFChildProperty(sourceObject),
+		Image(type_json_object const& sourceObject) : GLTFRootProperty(sourceObject),
 			uri(Get_Optional_Value<JsonParse::JsonString>(sourceObject, Constants::URI)),
 			mimeType(Get_Optional_Value<JsonParse::JsonString>(sourceObject, Constants::MIME_TYPE)),
 			bufferView(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::BUFFER_VIEW, -1)) {
@@ -2166,7 +2149,7 @@ namespace GLTF {
 		Image& operator=(Image&&) = default;
 	};
 
-	struct Material : public GLTFChildProperty {
+	struct Material : public GLTFRootProperty {
 		struct PBRMetallicRoughness : public GLTFProperty {
 			number_type baseColorFactor[4] = { 1,1,1,1 };
 			TextureInfo baseColorTexture;
@@ -2237,7 +2220,7 @@ namespace GLTF {
 
 		bool doubleSided = false;
 
-		Material(type_json_object const& sourceObject) : GLTFChildProperty(sourceObject),
+		Material(type_json_object const& sourceObject) : GLTFRootProperty(sourceObject),
 			alphaMode(Get_Optional_Value<JsonParse::JsonString>(sourceObject, Constants::ALPHA_MODE, Constants::DEFAULT_ALPHA_MODE)),
 			alphaCutoff(Get_Optional_Value<JsonParse::JsonNumber>(sourceObject, Constants::ALPHA_CUTOFF, number_type(0.5))),
 			doubleSided(Get_Optional_Value<JsonParse::JsonBoolean>(sourceObject, Constants::DOUBLE_SIDED, false)) {
@@ -2272,71 +2255,51 @@ namespace GLTF {
 		Material& operator=(Material&&) = default;
 	};
 
-	struct Mesh : public GLTFChildProperty {
+	struct Mesh : public GLTFRootProperty {
 		struct Primitive : public GLTFProperty {
-			struct Attribute {
-				std::map<std::string, index_type> values;
-
-				Attribute(type_json_object const& sourceObject) {
-					for (std::pair<std::string, std::shared_ptr<JsonParse::JsonElement>> const& attribute : sourceObject->attributes) {
-						if (attribute.second->type != JsonParse::Type::Integer) {
-							throw GltfElementTypeMismatch(sourceObject, FILE_FUNCTION_LINE + ": attributes object sub-element \"" + attribute.first + "\" is not an integer.");
-						}
-						values[attribute.first] = std::static_pointer_cast<JsonParse::JsonInteger>(attribute.second)->value;
-					}
-				}
-
-				Attribute() = default;
-				Attribute(Attribute const&) = default;
-				Attribute(Attribute&&) noexcept = default;
-
-				Attribute& operator=(Attribute const&) = default;
-				Attribute& operator=(Attribute&&) = default;
-			} values;
+			std::unordered_map<std::string, index_type> attributes;
 			index_type indices;
 			index_type material;
 			unsigned short mode = 4;
 
-			// All primitives must have the same number of targets in the same order
-			// This implementation doesn't care what order they are in
-			// This does cause some difficulty in assessing what is broken
-			std::map<std::string, std::vector<index_type>> targets;
+			std::unordered_map<std::string, std::vector<index_type>> targets;
 
 			Primitive(type_json_object const& sourceObject) : GLTFProperty(sourceObject),
-				values(Get_Required_Element<JsonParse::JsonObject>(FILE_FUNCTION_LINE, sourceObject, Constants::ATTRIBUTES)),
 				indices(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::INDICES, -1)),
 				material(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::MATERIAL, -1)),
 				mode(static_cast<decltype(mode)>(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::MODE, 4))) {
-				type_json_array _targets = Get_Optional_Element<JsonParse::JsonArray>(sourceObject, Constants::TARGETS);
-				if (_targets && !(_targets->values.empty())) {
-					// Don't bother throwing here
-					// It will get caught on the first loop
-					if (_targets->values[0]->type == JsonParse::Type::Object) {
-						type_json_object firstTarget = std::static_pointer_cast<JsonParse::JsonObject>(_targets->values[0]);
-						for (std::pair<std::string, std::shared_ptr<JsonParse::JsonElement>> const& attribute : firstTarget->attributes) {
-							// Don't check the JsonElement type is an integer
-							// We just want all the target names of the first element
-							targets[attribute.first];
-						}
+
+				type_json_object attributesObject = Get_Required_Element<JsonParse::JsonObject>(FILE_FUNCTION_LINE, sourceObject, Constants::ATTRIBUTES);
+				for (JsonParse::JsonObject::pair_type const& attribute : sourceObject->attributes) {
+					if (attribute.second->type != JsonParse::Type::Integer) {
+						throw GltfElementTypeMismatch(sourceObject, FILE_FUNCTION_LINE + ": object \"attributes\" attribute \"" + attribute.first + "\" value is not an integer.");
 					}
+					attributes[attribute.first] = std::static_pointer_cast<JsonParse::JsonInteger>(attribute.second)->value;
+				}
+
+				type_json_array _targets = Get_Optional_Element<JsonParse::JsonArray>(sourceObject, Constants::TARGETS);
+				if (_targets) {
 					for (size_t idx = 0; idx < _targets->values.size(); ++idx) {
 						if (_targets->values[idx]->type != JsonParse::Type::Object) {
-							throw GltfElementTypeMismatch(sourceObject, FILE_FUNCTION_LINE + ": element \"targets\" contains an element that is not an object.");
-						}
-						type_json_object object = std::static_pointer_cast<JsonParse::JsonObject>(_targets->values[idx]);
-						if (object->attributes.size() != targets.size()) {
-							throw GltfArraySizeMismatch(object, FILE_FUNCTION_LINE + ": element \"targets\" has an object that contains wrong number of elements, expected: " + std::to_string(targets.size()) + " got: " + std::to_string(object->attributes.size()));
+							throw GltfElementTypeMismatch(sourceObject, FILE_FUNCTION_LINE + ": array \"targets\" value at index:" + std::to_string(idx) + " is not an object.");
 						}
 
-						for (std::pair<const std::string, std::vector<index_type>>& target : targets) {
-							if (object->attributes.find(target.first) == object->attributes.cend()) {
-								throw GltfMissingElement(object, FILE_FUNCTION_LINE + ": element \"targets\" at index: " + std::to_string(idx) + " is missing attribute: \"" + target.first + "\".");
-							}
-							if (object->attributes[target.first]->type != JsonParse::Type::Integer) {
-								throw GltfElementTypeMismatch(object, FILE_FUNCTION_LINE + ": element \"targets\" at index: " + std::to_string(idx) + " attribute: \"" + target.first + "\" is not an integer.");
+						for (JsonParse::JsonObject::pair_type const& attribute : std::static_pointer_cast<JsonParse::JsonObject>(_targets->values[idx])->attributes) {
+							if (attribute.second->type != JsonParse::Type::Integer) {
+								//throw GltfElementTypeMismatch(_targets->values[idx], FILE_FUNCTION_LINE + ": element \"targets\" at index: " + std::to_string(idx) + " attribute: \"" + target.first + "\" is not an integer.");
 							}
 
-							target.second.emplace_back(std::static_pointer_cast<JsonParse::JsonInteger>(object->attributes[target.first])->value);
+							targets[attribute.first].emplace_back(attribute.first, std::static_pointer_cast<JsonParse::JsonInteger>(attribute.second)->value);
+						}
+
+						// Throw error to stop parsing the file
+						if (targets.size() > attributes.size()) {
+
+						}
+						for (decltype(targets)::const_reference target : targets) {
+							if (target.second.size() != attributes.size()) {
+
+							}
 						}
 					}
 				}
@@ -2353,7 +2316,7 @@ namespace GLTF {
 		std::vector<Primitive> primitives;
 		std::vector<number_type> weights;
 
-		Mesh(type_json_object const& sourceObject) : GLTFChildProperty(sourceObject) {
+		Mesh(type_json_object const& sourceObject) : GLTFRootProperty(sourceObject) {
 			type_json_array _primitives = Get_Required_Element<JsonParse::JsonArray>(FILE_FUNCTION_LINE, sourceObject, Constants::PRIMITIVES);
 			for (std::shared_ptr<JsonParse::JsonElement> element : _primitives->values) {
 				if (element->type != JsonParse::Type::Object) {
@@ -2386,27 +2349,32 @@ namespace GLTF {
 		Mesh& operator=(Mesh&&) = default;
 	};
 
-	struct Node : public GLTFChildProperty {
+	struct Node : public GLTFRootProperty {
 		index_type camera;
 		std::vector<index_type> children;
 		index_type skin;
-		number_type matrix[16] = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+		number_type matrix[16] = { 
+			1, 0, 0, 0, 
+			0, 1, 0, 0, 
+			0, 0, 1, 0, 
+			0, 0, 0, 1 
+		};
 		index_type mesh;
 		number_type rotation[4] = { 0, 0, 0, 1 };
 		number_type scale[3] = { 1, 1, 1 };
 		number_type translation[3] = { 0, 0, 0 };
 		std::vector<number_type> weights;
 
-		Node(type_json_object const& sourceObject) : GLTFChildProperty(sourceObject),
+		Node(type_json_object const& sourceObject) : GLTFRootProperty(sourceObject),
 			camera(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::CAMERA, -1)),
 			skin(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::SKIN, -1)),
 			mesh(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::MESH, -1)) {
-			Parse_Array_Of_Values<index_type, JsonParse::JsonInteger>(children, sourceObject, Constants::CHILDREN);
+			Parse_Array_Dynamic<index_type, JsonParse::JsonInteger>(children, sourceObject, Constants::CHILDREN);
 			Parse_Array(FILE_FUNCTION_LINE, matrix, 16, sourceObject, Constants::MATRIX);
 			Parse_Array(FILE_FUNCTION_LINE, rotation, 4, sourceObject, Constants::ROTATION);
 			Parse_Array(FILE_FUNCTION_LINE, scale, 3, sourceObject, Constants::SCALE);
 			Parse_Array(FILE_FUNCTION_LINE, translation, 3, sourceObject, Constants::TRANSLATION);
-			Parse_Array_Of_Values<number_type, JsonParse::JsonNumber>(weights, sourceObject, Constants::WEIGHTS);
+			Parse_Array_Dynamic<number_type, JsonParse::JsonNumber>(weights, sourceObject, Constants::WEIGHTS);
 		}
 
 		Node() = default;
@@ -2417,12 +2385,12 @@ namespace GLTF {
 		Node& operator=(Node&&) = default;
 	};
 
-	struct Sampler : public GLTFChildProperty {
+	struct Sampler : public GLTFRootProperty {
 		integer_type magFilter, minFilter;
 		integer_type wrapS = 10497, wrapT = 10497;
 		std::string name;
 
-		Sampler(type_json_object const& sourceObject) : GLTFChildProperty(sourceObject),
+		Sampler(type_json_object const& sourceObject) : GLTFRootProperty(sourceObject),
 			magFilter(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::MAG_FILTER)),
 			minFilter(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::MIN_FILTER)),
 			wrapS(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::WRAP_S)),
@@ -2438,11 +2406,11 @@ namespace GLTF {
 		Sampler& operator=(Sampler&&) = default;
 	};
 
-	struct Scene : public GLTFChildProperty {
+	struct Scene : public GLTFRootProperty {
 		std::vector<index_type> nodes;
 
-		Scene(type_json_object const& sourceObject) : GLTFChildProperty(sourceObject) {
-			Parse_Array_Of_Values<index_type, JsonParse::JsonInteger>(nodes, sourceObject, Constants::NODES);
+		Scene(type_json_object const& sourceObject) : GLTFRootProperty(sourceObject) {
+			Parse_Array_Dynamic<index_type, JsonParse::JsonInteger>(nodes, sourceObject, Constants::NODES);
 		}
 
 		Scene() = default;
@@ -2453,15 +2421,15 @@ namespace GLTF {
 		Scene& operator=(Scene&&) = default;
 	};
 
-	struct Skin : public GLTFChildProperty {
+	struct Skin : public GLTFRootProperty {
 		index_type inverseBindMatrices;
 		index_type skeleton;
 		std::vector<index_type> joints;
 
-		Skin(type_json_object const& sourceObject) : GLTFChildProperty(sourceObject),
+		Skin(type_json_object const& sourceObject) : GLTFRootProperty(sourceObject),
 			inverseBindMatrices(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::INVERSE_BIND_MATRICES, -1)),
 			skeleton(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::SKELETON)) {
-			Parse_Array_Of_Values<index_type, JsonParse::JsonInteger>(joints, sourceObject, Constants::JOINTS, true);
+			Parse_Array_Dynamic<index_type, JsonParse::JsonInteger>(joints, sourceObject, Constants::JOINTS, true);
 		}
 
 		Skin() = default;
@@ -2472,11 +2440,11 @@ namespace GLTF {
 		Skin& operator=(Skin&&) = default;
 	};
 
-	struct Texture : public GLTFChildProperty {
+	struct Texture : public GLTFRootProperty {
 		index_type sampler;
 		index_type source;
 
-		Texture(type_json_object const& sourceObject) : GLTFChildProperty(sourceObject),
+		Texture(type_json_object const& sourceObject) : GLTFRootProperty(sourceObject),
 			sampler(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::SAMPLER)),
 			source(Get_Optional_Value<JsonParse::JsonInteger>(sourceObject, Constants::SOURCE)) {
 
@@ -2508,10 +2476,15 @@ namespace GLTF {
 		std::vector<Scene> scenes;
 		std::vector<Skin> skins;
 		std::vector<Texture> textures;
+		enum class StateValidation : short {
+			Unvalidated = -1,
+			Success,
+			MissingRequired,
+		} validationState;
 
 		GLTFDoc(type_json_object const& rootObject) : GLTFProperty(rootObject),
 			asset(Get_Required_Element<JsonParse::JsonObject>(FILE_FUNCTION_LINE, rootObject, Constants::ASSET)),
-			scene(Get_Optional_Value<JsonParse::JsonInteger>(rootObject, Constants::SCENE)) {
+			scene(Get_Optional_Value<JsonParse::JsonInteger>(rootObject, Constants::SCENE)), validationState(StateValidation::Unvalidated) {
 			Parse_Array_Of_Objects(accessors, rootObject, Constants::ACCESSORS);
 			Parse_Array_Of_Objects(animations, rootObject, Constants::ANIMATIONS);
 			Parse_Array_Of_Objects(buffers, rootObject, Constants::BUFFERS);
@@ -2542,6 +2515,8 @@ namespace GLTF {
 					}
 				}
 			}
+
+			validationState = Validate();
 		}
 
 		GLTFDoc(GLTFDoc const&) = default;
@@ -2549,6 +2524,12 @@ namespace GLTF {
 
 		GLTFDoc& operator=(GLTFDoc const&) = default;
 		GLTFDoc& operator=(GLTFDoc&&) = default;
+
+		StateValidation Validate() const {
+
+
+			return StateValidation::Success;
+		}
 	};
 }
 
