@@ -314,9 +314,16 @@ struct DataStreamBase64 {
 struct GLBuffer : public Object {
 	std::vector<unsigned char> bufferData;
 
+	GLBuffer() : bufferData() {
+
+	}
+
 	GLBuffer(GLTF::Buffer const& buffer) : bufferData(Load_Data(buffer)) {
 
 	}
+
+	GLBuffer(GLBuffer const&) = default;
+	GLBuffer(GLBuffer&&) = default;
 
 	static std::vector<unsigned char> Load_Data_From_File(std::filesystem::path const& pathToFile) {
 		// Load a binary file and push directly to the bufferStorage
