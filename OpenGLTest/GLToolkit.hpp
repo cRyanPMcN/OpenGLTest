@@ -311,7 +311,12 @@ struct DataStreamBase64 {
 /// <summary>
 /// Loads data from a GLTF::Buffer object
 /// </summary>
-struct GLBufferData : public Object {
+struct GLBuffer : public Object {
+	std::vector<unsigned char> bufferData;
+
+	GLBuffer(GLTF::Buffer const& buffer) : bufferData(Load_Data(buffer)) {
+
+	}
 
 	static std::vector<unsigned char> Load_Data_From_File(std::filesystem::path const& pathToFile) {
 		// Load a binary file and push directly to the bufferStorage
@@ -487,4 +492,14 @@ public:
 		glCreateTextures(GL_TEXTURE_2D, 1, &_idTexture);
 		//glTextureBuffer()
 	}
+};
+
+struct GLNode {
+
+};
+
+struct GLObject : public Object {
+	std::vector<GLNode> nodes;
+	std::vector<GLNode> rootNodes;
+
 };
