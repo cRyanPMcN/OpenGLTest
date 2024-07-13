@@ -31,7 +31,7 @@ namespace GLTF {
 		}
 
 		GltfException(const type_json_object object, const char* message) : sourceObject(object), std::runtime_error(message) {
-
+			 
 		}
 	};
 
@@ -45,12 +45,16 @@ namespace GLTF {
 		}
 	};
 
-	struct GltfElementTypeMismatch : GltfException {
-		GltfElementTypeMismatch(const type_json_object object, const std::string& message) : GltfException(object, message) {
+	struct GltfTypeMismatch : GltfException {
+		GltfTypeMismatch(const type_json_object object, const std::string& messagePreamble, JsonParse::Type expectedType, JsonParse::Type foundType) : GltfException(object, messagePreamble) {
 
 		}
 
-		GltfElementTypeMismatch(const type_json_object object, const char* message) : GltfException(object, message) {
+		GltfTypeMismatch(const type_json_object object, const std::string& message) : GltfException(object, message) {
+
+		}
+
+		GltfTypeMismatch(const type_json_object object, const char* message) : GltfException(object, message) {
 
 		}
 	};
@@ -311,10 +315,10 @@ namespace GLTF {
 		struct GLTFError {
 			type_json_object parent;
 			type_json_element source;
-			std::string errorMessage;
+			std::string message;
 
-			GLTFError(type_json_object const& parentObject, type_json_element sourceElement, std::string message) :
-				parent(parentObject), source(sourceElement), errorMessage(message) {
+			GLTFError(type_json_object const& parentObject, type_json_element sourceElement, std::string errorMessage) :
+				parent(parentObject), source(sourceElement), message(errorMessage) {
 
 			}
 		};
@@ -1493,7 +1497,7 @@ namespace GLTF {
 		}
 
 		if (foundElement->type != _ExpectedTy::Class_Type()) {
-			throw GltfElementTypeMismatch(object, messagePreamble + ": element \"" + elementName + "\" must be a " + JsonParse_Type_To_String(_ExpectedTy::Class_Type()) + ".");
+			throw GltfTypeMismatch(object, messagePreamble + ": element \"" + elementName + "\" must be a " + JsonParse_Type_To_String(_ExpectedTy::Class_Type()) + ".");
 		}
 
 		return std::static_pointer_cast<_ExpectedTy>(foundElement)->value;
@@ -1516,7 +1520,7 @@ namespace GLTF {
 		}
 		if (foundElement->type != JsonParse::Type::Number) {
 			if (foundElement->type != JsonParse::Type::Integer) {
-				throw GltfElementTypeMismatch(object, messagePreamble + ": element \"" + elementName + "\" must be a number or integer.");
+				throw GltfTypeMismatch(object, messagePreamble + ": element \"" + elementName + "\" must be a number or integer.");
 			}
 			return static_cast<JsonParse::JsonNumber::value_type>(std::static_pointer_cast<JsonParse::JsonInteger>(foundElement)->value);
 		}
@@ -1558,7 +1562,7 @@ namespace GLTF {
 		}
 
 		if (foundElement->type != _ExpectedTy::Class_Type()) {
-			throw GltfElementTypeMismatch(object, messagePreamble + ": element \"" + elementName + "\" was not of expected type " + JsonParse_Type_To_String(_ExpectedTy::Class_Type()) + ".");
+			throw GltfTypeMismatch(object, messagePreamble + ": element \"" + elementName + "\" was not of expected type " + JsonParse_Type_To_String(_ExpectedTy::Class_Type()) + ".");
 		}
 
 		return std::static_pointer_cast<_ExpectedTy>(foundElement);
@@ -1583,7 +1587,7 @@ namespace GLTF {
 			if (required) {
 				// If foundElement is non-null then the type is wrong
 				if (foundElement) {
-					throw GltfElementTypeMismatch(object, FILE_FUNCTION_LINE + ": element \"" + elementName + "\" is not an array.");
+					throw GltfTypeMismatch(object, FILE_FUNCTION_LINE + ": element \"" + elementName + "\" is not an array.");
 				}
 				else {
 					throw GltfMissingElement(object, FILE_FUNCTION_LINE + ": required element \"" + elementName + "\" is missing.");
@@ -1601,7 +1605,7 @@ namespace GLTF {
 			destination.reserve(container->values.size());
 			for (size_t i = 0; i < container->values.size(); ++i) {
 				if (container->values[i]->type != _ExpectedTy::Class_Type()) {
-					throw GltfElementTypeMismatch(object, FILE_FUNCTION_LINE + ": element \"" + elementName + "\" idx: " + std::to_string(i) + " element is not of expected type " + JsonParse_Type_To_String(_ExpectedTy::Class_Type()) + ".");
+					throw GltfTypeMismatch(object, FILE_FUNCTION_LINE + ": element \"" + elementName + "\" idx: " + std::to_string(i) + " element is not of expected type " + JsonParse_Type_To_String(_ExpectedTy::Class_Type()) + ".");
 				}
 
 				destination.emplace_back(std::static_pointer_cast<_ExpectedTy>(container->values[i])->value);
@@ -1610,7 +1614,7 @@ namespace GLTF {
 		else {
 			if (required) {
 				if (foundElement) {
-					throw GltfElementTypeMismatch(object, FILE_FUNCTION_LINE + ": element \"" + elementName + "\" is not an array.");
+					throw GltfTypeMismatch(object, FILE_FUNCTION_LINE + ": element \"" + elementName + "\" is not an array.");
 				}
 				else {
 					throw GltfMissingElement(object, FILE_FUNCTION_LINE + ": required element \"" + elementName + "\" is missing.");
@@ -1629,7 +1633,7 @@ namespace GLTF {
 			for (size_t i = 0; i < container->values.size(); ++i) {
 				if (container->values[i]->type != JsonParse::Type::Number) {
 					if (container->values[i]->type != JsonParse::Type::Integer) {
-						throw GltfElementTypeMismatch(object, FILE_FUNCTION_LINE + ": element \"" + elementName + "\" idx: " + std::to_string(i) + " element is not of type number or integer.");
+						throw GltfTypeMismatch(object, FILE_FUNCTION_LINE + ": element \"" + elementName + "\" idx: " + std::to_string(i) + " element is not of type number or integer.");
 					}
 					destination.emplace_back(std::static_pointer_cast<JsonParse::JsonInteger>(container->values[i])->value);
 				}
@@ -1641,7 +1645,7 @@ namespace GLTF {
 		else {
 			if (required) {
 				if (foundElement) {
-					throw GltfElementTypeMismatch(object, FILE_FUNCTION_LINE + ": element \"" + elementName + "\" is not an array.");
+					throw GltfTypeMismatch(object, FILE_FUNCTION_LINE + ": element \"" + elementName + "\" is not an array.");
 				}
 				else {
 					throw GltfMissingElement(object, FILE_FUNCTION_LINE + ": required element \"" + elementName + "\" is missing.");
@@ -1669,7 +1673,7 @@ namespace GLTF {
 				else {
 					// Don't copy on failure	
 					if (required) {
-						throw GltfElementTypeMismatch(object, messagePreamble + ": element \"" + elementName + "\" at index:" + std::to_string(idx) + " is " + JsonParse_Type_To_String(jArray->values[idx]->type) + " must be 'number' or 'integer'.");
+						throw GltfTypeMismatch(object, messagePreamble + ": element \"" + elementName + "\" at index:" + std::to_string(idx) + " is " + JsonParse_Type_To_String(jArray->values[idx]->type) + " must be 'number' or 'integer'.");
 					}
 					return;
 				}
@@ -1681,7 +1685,9 @@ namespace GLTF {
 				if (!foundElement) {
 					throw GltfMissingElement(object, messagePreamble + ": required element \"" + elementName + "\" is missing.");
 				}
-				throw GltfElementTypeMismatch(object, messagePreamble + ": element \"" + elementName + "\" is not an array.");
+				else {
+					throw GltfTypeMismatch(object, messagePreamble + ": element \"" + elementName + "\" is not an array.");
+				}
 			}
 		}
 	}
@@ -2052,7 +2058,6 @@ namespace GLTF {
 	struct Camera : public GLTFRootProperty {
 		bool isPerspective = false;
 		struct Orthographic : public GLTFProperty {
-
 			// Required, no limitation
 			number_type xmag = 0; 
 			// Required, no limitation
@@ -2083,7 +2088,6 @@ namespace GLTF {
 			number_type aspectRatio = -1;
 			// Required, must be greater than zero(0), and should be less than pi radians(180 degress)
 			number_type yfov = -1;
-
 			// Required, must be greater than zero(0) and greater than znear(>znear), default infinity(std::numeric_limits::infinity())
 			number_type zfar = -1;
 			// Required, must be greater than zero and less than zfar(<zfar)
@@ -2116,7 +2120,6 @@ namespace GLTF {
 				orthographic = Orthographic(Get_Required_Element<JsonParse::JsonObject>(FILE_FUNCTION_LINE, sourceObject, Constants::ORTHOGRAPHIC));
 			}
 			else {
-
 				// Exception, unknown Camera.type
 			}
 		}
@@ -2272,7 +2275,7 @@ namespace GLTF {
 				type_json_object attributesObject = Get_Required_Element<JsonParse::JsonObject>(FILE_FUNCTION_LINE, sourceObject, Constants::ATTRIBUTES);
 				for (JsonParse::JsonObject::pair_type const& attribute : sourceObject->attributes) {
 					if (attribute.second->type != JsonParse::Type::Integer) {
-						throw GltfElementTypeMismatch(sourceObject, FILE_FUNCTION_LINE + ": object \"attributes\" attribute \"" + attribute.first + "\" value is not an integer.");
+						throw GltfTypeMismatch(sourceObject, FILE_FUNCTION_LINE + ": object \"attributes\" attribute \"" + attribute.first + "\" value is not an integer.");
 					}
 					attributes[attribute.first] = std::static_pointer_cast<JsonParse::JsonInteger>(attribute.second)->value;
 				}
@@ -2281,25 +2284,26 @@ namespace GLTF {
 				if (_targets) {
 					for (size_t idx = 0; idx < _targets->values.size(); ++idx) {
 						if (_targets->values[idx]->type != JsonParse::Type::Object) {
-							throw GltfElementTypeMismatch(sourceObject, FILE_FUNCTION_LINE + ": array \"targets\" value at index:" + std::to_string(idx) + " is not an object.");
+							throw GltfTypeMismatch(sourceObject, FILE_FUNCTION_LINE + ": array \"targets\" value at index:" + std::to_string(idx) + " is not an object.");
 						}
 
-						for (JsonParse::JsonObject::pair_type const& attribute : std::static_pointer_cast<JsonParse::JsonObject>(_targets->values[idx])->attributes) {
+						type_json_object target = std::static_pointer_cast<JsonParse::JsonObject>(_targets->values[idx]);
+
+						for (JsonParse::JsonObject::pair_type const& attribute : target->attributes) {
 							if (attribute.second->type != JsonParse::Type::Integer) {
-								//throw GltfElementTypeMismatch(_targets->values[idx], FILE_FUNCTION_LINE + ": element \"targets\" at index: " + std::to_string(idx) + " attribute: \"" + target.first + "\" is not an integer.");
+								throw GltfTypeMismatch(target, FILE_FUNCTION_LINE + ": element \"targets\" at index: " + std::to_string(idx) + " attribute: \"" + attribute.first + "\" is not an integer.");
 							}
 
 							targets[attribute.first].emplace_back(attribute.first, std::static_pointer_cast<JsonParse::JsonInteger>(attribute.second)->value);
 						}
+					}
 
-						// Throw error to stop parsing the file
-						if (targets.size() > attributes.size()) {
-
-						}
-						for (decltype(targets)::const_reference target : targets) {
-							if (target.second.size() != attributes.size()) {
-
-							}
+					if (targets.size() > attributes.size()) {
+						// Exception
+					}
+					for (decltype(targets)::const_reference target : targets) {
+						if (target.second.size() != attributes.size()) {
+							// Exception
 						}
 					}
 				}
@@ -2320,7 +2324,7 @@ namespace GLTF {
 			type_json_array _primitives = Get_Required_Element<JsonParse::JsonArray>(FILE_FUNCTION_LINE, sourceObject, Constants::PRIMITIVES);
 			for (std::shared_ptr<JsonParse::JsonElement> element : _primitives->values) {
 				if (element->type != JsonParse::Type::Object) {
-					throw GltfElementTypeMismatch(sourceObject, FILE_FUNCTION_LINE + ": array \"primitives\" contains an element that is not an object.");
+					throw GltfTypeMismatch(sourceObject, FILE_FUNCTION_LINE + ": array \"primitives\" contains an element that is not an object.");
 				}
 				primitives.emplace_back(std::static_pointer_cast<JsonParse::JsonObject>(element));
 			}
@@ -2330,7 +2334,7 @@ namespace GLTF {
 				for (std::shared_ptr<JsonParse::JsonElement> const& element : _weights->values) {
 					if (element->type != JsonParse::Type::Number) {
 						if (element->type != JsonParse::Type::Integer) {
-							throw GltfElementTypeMismatch(sourceObject, FILE_FUNCTION_LINE + ": array \"weights\" contains an element that is not a number or integer.");
+							throw GltfTypeMismatch(sourceObject, FILE_FUNCTION_LINE + ": array \"weights\" contains an element that is not a number or integer.");
 						}
 						weights.emplace_back(std::static_pointer_cast<JsonParse::JsonInteger>(element)->value);
 					}
@@ -2476,47 +2480,51 @@ namespace GLTF {
 		std::vector<Scene> scenes;
 		std::vector<Skin> skins;
 		std::vector<Texture> textures;
-		enum class StateValidation : short {
-			Unvalidated = -1,
-			Success,
-			MissingRequired,
-		} validationState;
+		std::vector<std::string> errors;
 
 		GLTFDoc(type_json_object const& rootObject) : GLTFProperty(rootObject),
-			asset(Get_Required_Element<JsonParse::JsonObject>(FILE_FUNCTION_LINE, rootObject, Constants::ASSET)),
-			scene(Get_Optional_Value<JsonParse::JsonInteger>(rootObject, Constants::SCENE)), validationState(StateValidation::Unvalidated) {
-			Parse_Array_Of_Objects(accessors, rootObject, Constants::ACCESSORS);
-			Parse_Array_Of_Objects(animations, rootObject, Constants::ANIMATIONS);
-			Parse_Array_Of_Objects(buffers, rootObject, Constants::BUFFERS);
-			Parse_Array_Of_Objects(bufferViews, rootObject, Constants::BUFFER_VIEWS);
-			Parse_Array_Of_Objects(cameras, rootObject, Constants::CAMERAS);
-			Parse_Array_Of_Objects(images, rootObject, Constants::IMAGES);
-			Parse_Array_Of_Objects(materials, rootObject, Constants::MATERIALS);
-			Parse_Array_Of_Objects(meshes, rootObject, Constants::MESHES);
-			Parse_Array_Of_Objects(nodes, rootObject, Constants::NODES);
-			Parse_Array_Of_Objects(samplers, rootObject, Constants::SAMPLERS);
-			Parse_Array_Of_Objects(scenes, rootObject, Constants::SCENES);
-			Parse_Array_Of_Objects(skins, rootObject, Constants::SKINS);
-			Parse_Array_Of_Objects(textures, rootObject, Constants::TEXTURES);
+			scene(Get_Optional_Value<JsonParse::JsonInteger>(rootObject, Constants::SCENE, decltype(scene)(-1))) {
+			try {
+				asset = Asset(Get_Required_Element<JsonParse::JsonObject>(FILE_FUNCTION_LINE, rootObject, Constants::ASSET));
+				Parse_Array_Of_Objects(accessors, rootObject, Constants::ACCESSORS);
+				Parse_Array_Of_Objects(animations, rootObject, Constants::ANIMATIONS);
+				Parse_Array_Of_Objects(buffers, rootObject, Constants::BUFFERS);
+				Parse_Array_Of_Objects(bufferViews, rootObject, Constants::BUFFER_VIEWS);
+				Parse_Array_Of_Objects(cameras, rootObject, Constants::CAMERAS);
+				Parse_Array_Of_Objects(images, rootObject, Constants::IMAGES);
+				Parse_Array_Of_Objects(materials, rootObject, Constants::MATERIALS);
+				Parse_Array_Of_Objects(meshes, rootObject, Constants::MESHES);
+				Parse_Array_Of_Objects(nodes, rootObject, Constants::NODES);
+				Parse_Array_Of_Objects(samplers, rootObject, Constants::SAMPLERS);
+				Parse_Array_Of_Objects(scenes, rootObject, Constants::SCENES);
+				Parse_Array_Of_Objects(skins, rootObject, Constants::SKINS);
+				Parse_Array_Of_Objects(textures, rootObject, Constants::TEXTURES);
 
-			type_json_array extUsed = Get_Optional_Element<JsonParse::JsonArray>(rootObject, Constants::EXTENSIONS_USED);
-			type_json_array extReq = Get_Optional_Element<JsonParse::JsonArray>(rootObject, Constants::EXTENSIONS_REQUIRED);
-			if (extUsed) {
-				for (std::shared_ptr<JsonParse::JsonElement> const& element : extUsed->values) {
-					if (element->type == JsonParse::Type::String) {
-						extensionsUsed.emplace_back(std::static_pointer_cast<JsonParse::JsonString>(element)->value);
+				type_json_array extUsed = Get_Optional_Element<JsonParse::JsonArray>(rootObject, Constants::EXTENSIONS_USED);
+				type_json_array extReq = Get_Optional_Element<JsonParse::JsonArray>(rootObject, Constants::EXTENSIONS_REQUIRED);
+				if (extUsed) {
+					for (std::shared_ptr<JsonParse::JsonElement> const& element : extUsed->values) {
+						if (element->type == JsonParse::Type::String) {
+							extensionsUsed.emplace_back(std::static_pointer_cast<JsonParse::JsonString>(element)->value);
+						}
+					}
+				}
+				if (extReq) {
+					for (std::shared_ptr<JsonParse::JsonElement> const& element : extReq->values) {
+						if (element->type == JsonParse::Type::String) {
+							extensionsUsed.emplace_back(std::static_pointer_cast<JsonParse::JsonString>(element)->value);
+						}
 					}
 				}
 			}
-			if (extReq) {
-				for (std::shared_ptr<JsonParse::JsonElement> const& element : extReq->values) {
-					if (element->type == JsonParse::Type::String) {
-						extensionsUsed.emplace_back(std::static_pointer_cast<JsonParse::JsonString>(element)->value);
-					}
+			catch (GltfException const& ex) {
+				Validator validator(rootObject);
+				for (decltype(validator.errors)::const_reference error : validator.errors) {
+					errors.emplace_back(error.message);
 				}
 			}
-
-			validationState = Validate();
+			
+			Validate();
 		}
 
 		GLTFDoc(GLTFDoc const&) = default;
@@ -2525,10 +2533,8 @@ namespace GLTF {
 		GLTFDoc& operator=(GLTFDoc const&) = default;
 		GLTFDoc& operator=(GLTFDoc&&) = default;
 
-		StateValidation Validate() const {
+		void Validate() const {
 
-
-			return StateValidation::Success;
 		}
 	};
 }
