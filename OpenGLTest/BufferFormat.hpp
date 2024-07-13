@@ -142,7 +142,7 @@ public:
 	bool AddUnsignedShort(short count, bool convertToFloat = false, bool normalize = false) {
 		return AddAttributeInteger(count, AttributeType::ShortUnsigned, convertToFloat, normalize, sizeof(unsigned short) * count);
 	}
-	bool AddUnsignedInt(short count, bool convertToFloat = false, bool normalize = false) {
+	bool AddUnsignedInteger(short count, bool convertToFloat = false, bool normalize = false) {
 		return AddAttributeInteger(count, AttributeType::IntegerUnsigned, convertToFloat, normalize, sizeof(unsigned int) * count);
 	}
 
