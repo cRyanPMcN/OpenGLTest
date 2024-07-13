@@ -191,7 +191,7 @@ namespace JsonParse {
 
 #define FILE_FUNCTION_LINE std::string(__FILE__) + ':' + std::string(__FUNCTION__) + '@' + std::to_string(__LINE__)
 
-	struct JsonFile {
+	struct JsonReader {
 		struct Statistics {
 			size_t lines;
 			size_t columns;
@@ -221,7 +221,7 @@ namespace JsonParse {
 		std::string jsonSource;
 		std::shared_ptr<JsonElement> rootNode;
 
-		JsonFile(std::ifstream& file) : rootNode(nullptr), jsonSource(""), fileStats() {
+		JsonReader(std::ifstream& file) : rootNode(nullptr), jsonSource(""), fileStats() {
 			if (file.is_open()) {
 				std::stringstream stringSource;
 				stringSource << file.rdbuf();
@@ -231,7 +231,7 @@ namespace JsonParse {
 			}
 		}
 
-		JsonFile(std::ifstream&& file) : rootNode(nullptr), jsonSource(""), fileStats() {
+		JsonReader(std::ifstream&& file) : rootNode(nullptr), jsonSource(""), fileStats() {
 			if (file.is_open()) {
 				std::stringstream stringSource;
 				stringSource << file.rdbuf();
@@ -242,38 +242,29 @@ namespace JsonParse {
 			}
 		}
 
-		JsonFile(std::filesystem::path const& jsonPath) : JsonFile(std::ifstream(jsonPath, std::ios::binary)) {
+		JsonReader(std::filesystem::path const& jsonPath) : JsonReader(std::ifstream(jsonPath, std::ios::binary)) {
 
 		}
 
-		JsonFile(std::filesystem::path&& jsonPath) : JsonFile(std::ifstream(jsonPath, std::ios::binary)) {
+		JsonReader(std::filesystem::path&& jsonPath) : JsonReader(std::ifstream(jsonPath, std::ios::binary)) {
 
 		}
 
-		JsonFile(std::string::iterator sourceBegin, std::string::iterator sourceEnd) : rootNode(nullptr), jsonSource(sourceBegin, sourceEnd), fileStats() {
+		JsonReader(std::string::iterator sourceBegin, std::string::iterator sourceEnd) : rootNode(nullptr), jsonSource(sourceBegin, sourceEnd), fileStats() {
 			ParseJson();
 		}
 
-		~JsonFile() {
+		~JsonReader() {
 
 		}
 
-		static std::pair<std::shared_ptr<JsonElement>, JsonFile::Statistics> Parse_Json(std::filesystem::path const& filePath) {
-			JsonFile file(filePath);
-			return std::pair<std::shared_ptr<JsonElement>, JsonFile::Statistics>(file.rootNode, file.fileStats);
+		static std::pair<std::shared_ptr<JsonElement>, JsonReader::Statistics> Parse_Json(std::filesystem::path const& filePath) {
+			JsonReader file(filePath);
+			return std::pair<std::shared_ptr<JsonElement>, JsonReader::Statistics>(file.rootNode, file.fileStats);
 		}
 
 	protected:
 		bool IsJsonSpace(char c) {
-			//switch (c) {
-			//case ' ':
-			//case '\n':
-			//case '\t':
-			//case '\r':
-			//	return true;
-			//default:
-			//	return false;
-			//}
 			return (c == ' ' || c == '\n' || c == '\t' || c == '\r');
 		}
 
@@ -348,6 +339,9 @@ namespace JsonParse {
 			while (++sourceIter != jsonSource.cend()) {
 				fileStats.Increment(*sourceIter);
 				if (*sourceIter == '\\') {
+					if ((sourceIter + 1) == jsonSource.cend()) {
+						// Exception, invalid escape sequence
+					}
 					switch (*(sourceIter + 1)) {
 					case '"':
 					case '\\':
@@ -612,6 +606,8 @@ namespace JsonParse {
 			case 'N':
 				return ParseNull(sourceIter);
 				break;
+			case 'E':
+			case 'e':
 			case '+':
 			case '-':
 				return ParseNumber(sourceIter);
