@@ -1785,6 +1785,7 @@ namespace GLTF {
 
 			return Type::Error;
 		}
+
 		index_type bufferView;
 		integer_type byteOffset = 0;
 		integer_type componentType;
@@ -1848,6 +1849,10 @@ namespace GLTF {
 
 			Sparse& operator=(Sparse const&) = default;
 			Sparse& operator=(Sparse&&) = default;
+
+			size_t IndexSize() const {
+				return count * Byte_Per_Component((Enumerations::ComponentType)indices.componentType);
+			}
 		} sparse;
 
 		Accessor(type_json_object const& sourceObject) : GLTFRootProperty(sourceObject),
@@ -1874,7 +1879,7 @@ namespace GLTF {
 		Accessor& operator=(Accessor const&) = default;
 		Accessor& operator=(Accessor&&) = default;
 
-		unsigned ComponentCount() const {
+		static unsigned Component_Count(Type type) {
 			switch (type) {
 			case Type::Scalar:
 				return 1;
@@ -1893,7 +1898,11 @@ namespace GLTF {
 			return 0;
 		}
 
-		unsigned BytesPerComponent() const {
+		unsigned ComponentCount() const {
+			return Component_Count(this->type);
+		}
+
+		static unsigned Byte_Per_Component(Enumerations::ComponentType componentType) {
 			switch (componentType) {
 			case Enumerations::ComponentType::Byte:
 			case Enumerations::ComponentType::Unsigned_Byte:
@@ -1909,8 +1918,16 @@ namespace GLTF {
 			return 0;
 		}
 
+		unsigned BytesPerComponent() const {
+			return Byte_Per_Component((Enumerations::ComponentType)this->componentType);
+		}
+
+		integer_type BytesPerElement() const {
+			return ComponentCount() * BytesPerComponent();
+		}
+
 		integer_type ByteLength() const {
-			return count * ComponentCount() * BytesPerComponent();
+			return count * BytesPerElement();
 		}
 	};
 
