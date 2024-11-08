@@ -265,6 +265,7 @@ struct DataStreamBase64 {
 		}
 
 		const unsigned short paddingCount = (source[source.size() - 1] == '=') + (source[source.size() - 2] == '=');
+		// Index of the last value which does not contain padding
 		const size_t FINALUNPADDED = source.size() - (4 * size_t(paddingCount != 0));
 		std::vector<unsigned char> result((source.size() / 4 * 3) - paddingCount, unsigned char());
 
@@ -272,21 +273,27 @@ struct DataStreamBase64 {
 		int number = 0;
 		unsigned char const* sourcePointer = (unsigned char const*)source.data();
 		unsigned char* resultPointer = result.data();
-		for (size_t idxSource = 0; idxSource != FINALUNPADDED; idxSource += 4) {
-			number = INDEX_ARRAY[sourcePointer[idxSource]] << 18
-				| INDEX_ARRAY[sourcePointer[idxSource + 1]] << 12
-				| INDEX_ARRAY[sourcePointer[idxSource + 2]] << 6
-				| INDEX_ARRAY[sourcePointer[idxSource + 3]];
+		for (size_t idxSource = 0; idxSource != FINALUNPADDED; idxSource += 4, idxResult += 3) {
+			number = INDEX_ARRAY[sourcePointer[idxSource]];
+			number <<= 6;
+			number |= INDEX_ARRAY[sourcePointer[idxSource + 1]];
+			number <<= 6;
+			number |= INDEX_ARRAY[sourcePointer[idxSource + 2]];
+			number <<= 6;
+			number |= INDEX_ARRAY[sourcePointer[idxSource + 3]];
+			//number = (int)(INDEX_ARRAY[sourcePointer[idxSource]]) << 18
+			//	| (int)(INDEX_ARRAY[sourcePointer[idxSource + 1]]) << 12
+			//	| (int)(INDEX_ARRAY[sourcePointer[idxSource + 2]]) << 6
+			//	| (int)(INDEX_ARRAY[sourcePointer[idxSource + 3]]);
 
-			resultPointer[idxResult] = number >> 16;
-			resultPointer[idxResult + 1] = number >> 8;
-			resultPointer[idxResult + 2] = number;
-			idxResult += 3;
+			resultPointer[idxResult] = (unsigned char)((number >> 16) | 0xFF);
+			resultPointer[idxResult + 1] = (unsigned char)((number >> 8) | 0xFF);
+			resultPointer[idxResult + 2] = (unsigned char)(number | 0xFF);
 		}
 
 		switch (paddingCount) {
 		case 2:
-			number = INDEX_ARRAY[sourcePointer[FINALUNPADDED]] << 18 | INDEX_ARRAY[sourcePointer[FINALUNPADDED + 1]] << 12;
+			number = (int)(INDEX_ARRAY[sourcePointer[FINALUNPADDED]]) << 18 | (int)(INDEX_ARRAY[sourcePointer[FINALUNPADDED + 1]]) << 12;
 			resultPointer[idxResult] = static_cast<char>(number >> 16);
 			break;
 		case 1:
@@ -322,7 +329,13 @@ struct GLBuffer : public Object {
 
 	}
 
-	GLBuffer(GLTF::Buffer const& buffer) : bufferData(Load_Data(buffer)) {
+	GLBuffer(GLTF::Buffer const& buffer) : bufferData(Load_Data(buffer, std::filesystem::current_path())) {
+
+	}
+
+	/// <param name="buffer"></param>
+	/// <param name="parentDirectory">Directory that contains the file where the buffer is defined</param>
+	GLBuffer(GLTF::Buffer const& buffer, std::filesystem::path const& parentDirectory) : bufferData(Load_Data(buffer, parentDirectory)) {
 
 	}
 
@@ -348,7 +361,7 @@ struct GLBuffer : public Object {
 		return std::vector<unsigned char>(data.cbegin(), data.cend());
 	}
 
-	static std::vector<unsigned char> Load_Data(GLTF::Buffer const& buffer) {
+	static std::vector<unsigned char> Load_Data(GLTF::Buffer const& buffer, std::filesystem::path parentDirectory) {
 		if (buffer.uri.find(GLTF::Constants::STREAM_DATA) == 0) {
 			DataStreamBase64 data(buffer.uri);
 			 
@@ -367,6 +380,10 @@ struct GLBuffer : public Object {
 
 			if (bufferPath.extension() != ".bin") {
 				// exception, buffer.uri is not a binary file
+			}
+
+			if (bufferPath.is_relative()) {
+				bufferPath = parentDirectory.append(bufferPath.string());
 			}
 			
 			// For relative paths the std::filesystem::current_path is expected 

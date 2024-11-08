@@ -347,7 +347,7 @@ GLTFObject Load_GLTF_File(std::filesystem::path const& path) {
 					std::vector<GLBufferView> bufferViews;
 
 					for (GLTF::Buffer const& buffer : doc.buffers) {
-						//buffers.emplace_back(GLBuffer(buffer, directoryPath));
+						buffers.emplace_back(GLBuffer(buffer, directoryPath));
 					}
 
 					for (GLTF::BufferView const& bufferView : doc.bufferViews) {
