@@ -152,19 +152,19 @@ public:
 	}
 
 	/// Number of attributes in the format
-	size_t Size() {
+	size_t Size() const {
 		return attributes.size();
 	}
 
-	decltype(stride) Stride() {
+	decltype(stride) Stride() const {
 		return stride;
 	}
 
-	decltype(alignment) Alignment() {
+	decltype(alignment) Alignment() const {
 		return alignment;
 	}
 	
-	decltype(bytesRemaining) RemainingBytes() {
+	decltype(bytesRemaining) RemainingBytes() const {
 		return bytesRemaining;
 	}
 

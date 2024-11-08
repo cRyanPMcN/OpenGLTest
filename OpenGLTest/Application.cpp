@@ -245,51 +245,51 @@ void Check_Max_Min_Values(std::vector<unsigned char>& values, GLTF::Accessor con
 	_Ty* endPointer = reinterpret_cast<_Ty*>(values.data() + values.size());
 	decltype(accessor.ComponentCount()) componentCount(accessor.ComponentCount());
 	
-	if (accessor.max.size() == componentCount) {
-		// Check Max and Min
-		if (accessor.min.size() == componentCount) {
-			for (size_t initialIdx = 0; initialIdx < accessor.count; ++initialIdx) {
-				for (size_t repeater = 0, limit = componentCount; repeater < limit; ++repeater) {
-					if (valuePointer[initialIdx + repeater] > accessor.max[repeater]) {
-						valuePointer[initialIdx + repeater] = accessor.max[repeater];
-					}
-					if (valuePointer[initialIdx + repeater] < accessor.min[repeater]) {
-						valuePointer[initialIdx + repeater] = accessor.min[repeater];
-					}
-				}
-			}
-		}
-		// Check only max
-		else {
-			for (size_t initialIdx = 0; initialIdx < count; initialIdx += componentCount) {
-				for (size_t repeater = 0, limit = componentCount; repeater < limit; ++repeater) {
-					if (valuePointer[initialIdx + repeater] > accessor.max[repeater]) {
-						valuePointer[initialIdx + repeater] = accessor.max[repeater];
-					}
-				}
-			}
-		}
-	}
-	else {
-		// Check only min
-		if (accessor.min.size() = componentCount) {
-			for (size_t initialIdx = 0; initialIdx < count; initialIdx += componentCount) {
-				for (size_t repeater = 0, limit = componentCount; repeater < limit; ++repeater) {
-					if (valuePointer[initialIdx + repeater] < min[repeater]) {
-						valuePointer[initialIdx + repeater] = min[repeater];
-					}
-				}
-			}
-		}
-		else {
-			// No check
-		}
-	}
+	//if (accessor.max.size() == componentCount) {
+	//	// Check Max and Min
+	//	if (accessor.min.size() == componentCount) {
+	//		for (size_t initialIdx = 0; initialIdx < accessor.count; ++initialIdx) {
+	//			for (size_t repeater = 0, limit = componentCount; repeater < limit; ++repeater) {
+	//				if (valuePointer[initialIdx + repeater] > accessor.max[repeater]) {
+	//					valuePointer[initialIdx + repeater] = accessor.max[repeater];
+	//				}
+	//				if (valuePointer[initialIdx + repeater] < accessor.min[repeater]) {
+	//					valuePointer[initialIdx + repeater] = accessor.min[repeater];
+	//				}
+	//			}
+	//		}
+	//	}
+	//	// Check only max
+	//	else {
+	//		for (size_t initialIdx = 0; initialIdx < accessor.count; initialIdx += componentCount) {
+	//			for (size_t repeater = 0, limit = componentCount; repeater < limit; ++repeater) {
+	//				if (valuePointer[initialIdx + repeater] > accessor.max[repeater]) {
+	//					valuePointer[initialIdx + repeater] = accessor.max[repeater];
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
+	//else {
+	//	// Check only min
+	//	if (accessor.min.size() == componentCount) {
+	//		for (size_t initialIdx = 0; initialIdx < accessor.count; initialIdx += componentCount) {
+	//			for (size_t repeater = 0, limit = componentCount; repeater < limit; ++repeater) {
+	//				if (valuePointer[initialIdx + repeater] < accessor.min[repeater]) {
+	//					valuePointer[initialIdx + repeater] = accessor.min[repeater];
+	//				}
+	//			}
+	//		}
+	//	}
+	//	else {
+	//		// No check
+	//	}
+	//}
 }
 
 template <class _Ty>
 std::vector<_Ty> Subrange_Vector(std::vector<unsigned char>&& source, size_t offset, size_t distance) {
-	std::vector<_Ty>::const_iterator tempIter = source.cbegin() + offset;
+	typename std::vector<_Ty>::const_iterator tempIter = source.cbegin() + offset;
 	std::vector<_Ty> copy(tempIter, tempIter + distance);
 	copy.resize(distance);
 	return copy;
@@ -318,7 +318,7 @@ GLTFObject Load_GLTF_File(std::filesystem::path const& path) {
 					GLTF::GLTFDoc doc(object);
 
 					std::vector<std::shared_ptr<GLCamera>> cameras;
-					// Cameras can be front-loaded easily
+					// Cameras can be loaded easily
 					for (GLTF::Camera const& camera : doc.cameras) {
 						cameras.emplace_back(std::make_shared<GLCamera>(camera));
 					}
@@ -347,7 +347,7 @@ GLTFObject Load_GLTF_File(std::filesystem::path const& path) {
 					std::vector<GLBufferView> bufferViews;
 
 					for (GLTF::Buffer const& buffer : doc.buffers) {
-						buffers.emplace_back(buffer, directoryPath);
+						//buffers.emplace_back(GLBuffer(buffer, directoryPath));
 					}
 
 					for (GLTF::BufferView const& bufferView : doc.bufferViews) {
@@ -369,13 +369,18 @@ GLTFObject Load_GLTF_File(std::filesystem::path const& path) {
 						if (info.alignment < accessor.BytesPerComponent()) {
 							info.alignment = accessor.BytesPerComponent();
 						}
+						// if accessor.bufferView is undefined
+						if (accessor.bufferView == -1) {
+							// Create empty bufferData
+							buffers.emplace_back(GLBuffer((size_t)(accessor.count) * accessor.BytesPerElement()));
+						}
 						info.accessors.emplace_back(&accessor);
 					}
 
 					std::vector<std::shared_ptr<BufferFormat>> bufferViewFormats;
 					
 					for (size_t index = 0; index < accInfo.size(); ++index) {
-						bufferViewFormats.emplace_back(new BufferFormat(accInfo[index].alignment));
+						bufferViewFormats.emplace_back(std::shared_ptr<BufferFormat>(new BufferFormat(accInfo[index].alignment)));
 						GLBufferView const& view = bufferViews[index];
 						if (view.stride <= 0 && accInfo[index].accessors.size() == 1) {
 							bufferViews[index].stride = (*(accInfo[index].accessors.begin()))->BytesPerElement();

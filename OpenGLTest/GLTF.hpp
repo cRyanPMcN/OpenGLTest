@@ -92,6 +92,7 @@ namespace GLTF {
 		};
 
 		enum ComponentType : integer_type {
+			Uninitialized = 0,
 			Byte = 5120,
 			Unsigned_Byte = 5121,
 			Short = 5122,
@@ -287,7 +288,7 @@ namespace GLTF {
 		}
 	}
 
-#define CALLBACK_ARGS(objectName) std::string const& messagePreamble, type_json_object const& ##objectName
+#define CALLBACK_ARGS(objectName) std::string const& messagePreamble, type_json_object const& objectName
 #define CALLBACK_INTEGER_ARGS(objectName) CALLBACK_ARGS(objectName), type_json_integer const& element
 #define CALLBACK_NUMBER_ARGS(objectName) CALLBACK_ARGS(objectName), type_json_number const& element
 #define CALLBACK_STRING_ARGS(objectName) CALLBACK_ARGS(objectName), type_json_string const& element
@@ -325,7 +326,7 @@ namespace GLTF {
 
 		struct AccessorInfo {
 			std::string accessorType = "";
-			Enumerations::ComponentType componentType;
+			Enumerations::ComponentType componentType = Enumerations::ComponentType::Uninitialized;
 			integer_type count = 0;
 		};
 
@@ -334,7 +335,7 @@ namespace GLTF {
 		std::vector<GLTFError> errors;
 		std::vector<GLTFError> warnings;
 		std::set<std::string> extensionsInFile;
-		std::map<std::string, size_t> arraySizes;
+		std::map<std::string, JsonParse::JsonInteger::value_type> arraySizes;
 		// Track size of joint array in each 'skin' element
 		// Is reset after the 'skin' element is processed
 		index_type sizeArrayJoints;
@@ -1635,7 +1636,7 @@ namespace GLTF {
 					if (container->values[i]->type != JsonParse::Type::Integer) {
 						throw GltfTypeMismatch(object, FILE_FUNCTION_LINE + ": element \"" + elementName + "\" idx: " + std::to_string(i) + " element is not of type number or integer.");
 					}
-					destination.emplace_back(std::static_pointer_cast<JsonParse::JsonInteger>(container->values[i])->value);
+					destination.emplace_back(static_cast<number_type>(std::static_pointer_cast<JsonParse::JsonInteger>(container->values[i])->value));
 				}
 				else {
 					destination.emplace_back(std::static_pointer_cast<JsonParse::JsonNumber>(container->values[i])->value);
@@ -1797,9 +1798,9 @@ namespace GLTF {
 		struct Sparse : public GLTFProperty {
 			integer_type count = -1;
 			struct Index : public GLTFProperty {
-				index_type bufferView;
+				index_type bufferView = -1;
 				integer_type byteOffset = 0;
-				integer_type componentType;
+				integer_type componentType = Enumerations::ComponentType::Byte;
 
 				Index(type_json_object const& sourceObject) : GLTFProperty(sourceObject),
 					bufferView(Get_Required_Value<JsonParse::JsonInteger>(FILE_FUNCTION_LINE, sourceObject, Constants::BUFFER_VIEW)),
@@ -2313,7 +2314,7 @@ namespace GLTF {
 								throw GltfTypeMismatch(target, FILE_FUNCTION_LINE + ": element \"targets\" at index: " + std::to_string(idx) + " attribute: \"" + attribute.first + "\" is not an integer.");
 							}
 							else {
-								targets[attribute.first].emplace_back(attribute.first, std::static_pointer_cast<JsonParse::JsonInteger>(attribute.second)->value);
+								targets[attribute.first].emplace_back(static_cast<size_t>(std::static_pointer_cast<JsonParse::JsonInteger>(attribute.second)->value));
 							}
 						}
 					}
@@ -2356,7 +2357,7 @@ namespace GLTF {
 						if (element->type != JsonParse::Type::Integer) {
 							throw GltfTypeMismatch(sourceObject, FILE_FUNCTION_LINE + ": array \"weights\" contains an element that is not a number or integer.");
 						}
-						weights.emplace_back(std::static_pointer_cast<JsonParse::JsonInteger>(element)->value);
+						weights.emplace_back(static_cast<number_type>(std::static_pointer_cast<JsonParse::JsonInteger>(element)->value));
 					}
 					else {
 						weights.emplace_back(std::static_pointer_cast<JsonParse::JsonNumber>(element)->value);
@@ -2539,6 +2540,7 @@ namespace GLTF {
 			}
 			catch (GltfException const& ex) {
 				Validator validator(rootObject);
+				errors.emplace_back(ex.what());
 				for (decltype(validator.errors)::const_reference error : validator.errors) {
 					errors.emplace_back(error.message);
 				}

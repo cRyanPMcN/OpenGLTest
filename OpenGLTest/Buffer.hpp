@@ -71,7 +71,7 @@ public:
 			return false;
 		}
 
-		glNamedBufferSubData(_bufferID, offset, _bufferSize, 0);
+		glNamedBufferSubData(_bufferId, offset, _bufferSize, 0);
 		glNamedBufferSubData(_bufferId, offset, data.size() * sizeof(_Ty), data.data());
 	}
 	

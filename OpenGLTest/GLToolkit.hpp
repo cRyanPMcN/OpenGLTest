@@ -264,7 +264,7 @@ struct DataStreamBase64 {
 			throw std::runtime_error(std::string(__FILE__) + ':' + std::string(__FUNCTION__) + '@' + std::to_string(__LINE__) + ": Base64 Stream length must be a multiple of four.");
 		}
 
-		const unsigned short paddingCount = source[source.size() - 1] == '=' + source[source.size() - 2] == '=';
+		const unsigned short paddingCount = (source[source.size() - 1] == '=') + (source[source.size() - 2] == '=');
 		const size_t FINALUNPADDED = source.size() - (4 * size_t(paddingCount != 0));
 		std::vector<unsigned char> result((source.size() / 4 * 3) - paddingCount, unsigned char());
 
@@ -315,6 +315,10 @@ struct GLBuffer : public Object {
 	std::vector<unsigned char> bufferData;
 
 	GLBuffer() : bufferData() {
+
+	}
+
+	GLBuffer(size_t byteCount) : bufferData(byteCount, decltype(bufferData)::value_type()) {
 
 	}
 
@@ -474,7 +478,7 @@ public:
 
 				}
 				else if (image.mimeType == GLTF::Constants::MIME_IMAGE_JPEG) {
-					stbi_loadf_from_memory(base64.binaryData.data(), base64.binaryData.size(), &width, &height, &channels, 0);
+					stbi_loadf_from_memory(base64.binaryData.data(), (int)base64.binaryData.size(), &width, &height, &channels, 0);
 				}
 			}
 			// Try to load

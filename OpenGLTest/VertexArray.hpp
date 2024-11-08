@@ -144,10 +144,6 @@ protected:
 	std::vector<Binding> bindings;
 	std::shared_ptr<BufferIndex> bufferIndex;
 public:
-	VertexArray(std::shared_ptr<BufferFormat> const& vertexFormat) {
-
-	}
-
 	VertexArray(std::shared_ptr<BufferFormat>& vertexFormat) {
 		glCreateVertexArrays(1, &idVertexArray);
 		bindings.emplace_back(*this, vertexFormat);
@@ -160,7 +156,7 @@ public:
 		GLuint attributeId = 0;
 
 		for (size_t idx = 0; idx < vertexFormats.size(); ++idx) {
-			bindings.emplace_back(*this, idx, attributeId, vertexFormats[idx]);
+			bindings.emplace_back(Binding(*this, (GLuint)idx, attributeId, vertexFormats[idx]));
 		}
 	}
 

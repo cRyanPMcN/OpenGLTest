@@ -234,42 +234,42 @@ namespace Ply {
 		case Type::Char:
 			char c;
 			input.read((char*)&c, sizeof(char));
-			value = c;
+			value = (_idxTy)c;
 			break;
 		case Type::CharUnsigned:
 			unsigned char uc;
 			input.read((char*)&uc, sizeof(unsigned char));
-			value = uc;
+			value = (_idxTy)uc;
 			break;
 		case Type::Short:
 			short s;
 			input.read((char*)&s, sizeof(short));
-			value = s;
+			value = (_idxTy)s;
 			break;
 		case Type::ShortUnsigned:
 			unsigned short us;
 			input.read((char*)&us, sizeof(unsigned short));
-			value = us;
+			value = (_idxTy)us;
 			break;
 		case Type::Integer:
 			int i;
 			input.read((char*)&i, sizeof(int));
-			value = i;
+			value = (_idxTy)i;
 			break;
 		case Type::IntegerUnsigned:
 			unsigned int ui;
 			input.read((char*)&ui, sizeof(unsigned int));
-			value = ui;
+			value = (_idxTy)ui;
 			break;
 		case Type::Float:
 			float f;
 			input.read((char*)&f, sizeof(float));
-			value = f;
+			value = (_idxTy)f;
 			break;
 		case Type::Double:
 			double d;
 			input.read((char*)&d, sizeof(double));
-			value = d;
+			value = (_idxTy)d;
 			break;
 		}
 
@@ -281,7 +281,7 @@ namespace Ply {
 		if (!vertexBuffer.empty() || !indexBuffer.empty()) {
 			throw std::invalid_argument("Parse_Ply_File: vertexBuffer and indexBuffer must be empty.");
 		}
-		if (vertexFormat.stride != sizeof(_Ty)) {
+		if (vertexFormat.Stride() != sizeof(_Ty)) {
 			throw std::invalid_argument("Parse_Ply_File: vertexFormat stride is not equal to the size of the Vertex object.");
 		}
 
