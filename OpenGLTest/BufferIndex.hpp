@@ -34,13 +34,13 @@ public:
 
 	BufferIndex(std::vector<std::vector<unsigned int>> const& indexes) : subBuffers(), Buffer(CalculateBufferSize(indexes)) {
 		for (size_t idx = 0; idx < subBuffers.size(); ++idx) {
-			glNamedBufferSubData(bufferId, subBuffers[idx].bufferOffset, subBuffers[idx].subBufferSize, indexes[idx].data());
+			glNamedBufferSubData(_bufferId, subBuffers[idx].bufferOffset, subBuffers[idx].subBufferSize, indexes[idx].data());
 		}
 	}
 
 	BufferIndex(std::vector<std::vector<unsigned int>> const& indexes, MutableBufferT makeMutable) : subBuffers(), Buffer(CalculateBufferSize(indexes), makeMutable) {
 		for (size_t idx = 0; idx < subBuffers.size(); ++idx) {
-			glNamedBufferSubData(bufferId, subBuffers[idx].bufferOffset, subBuffers[idx].subBufferSize, indexes[idx].data());
+			glNamedBufferSubData(_bufferId, subBuffers[idx].bufferOffset, subBuffers[idx].subBufferSize, indexes[idx].data());
 		}
 	}
 

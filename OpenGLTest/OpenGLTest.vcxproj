@@ -196,7 +196,7 @@
     <ClInclude Include="Model.hpp" />
     <ClInclude Include="Object.hpp" />
     <ClInclude Include="Ply.hpp" />
-    <ClInclude Include="Shader.h" />
+    <ClInclude Include="Shader.hpp" />
     <ClInclude Include="Texture.hpp" />
     <ClInclude Include="VertexArray.hpp" />
     <ClInclude Include="BufferVertex.hpp" />

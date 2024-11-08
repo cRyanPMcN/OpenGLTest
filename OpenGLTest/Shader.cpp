@@ -1,4 +1,4 @@
-#include "Shader.h"
+#include "Shader.hpp"
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -80,24 +80,24 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath) {
 	std::ifstream vShaderFile;
 	std::ifstream fShaderFile;
 	vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
-try {
-	vShaderFile.open(vertexPath);
-	fShaderFile.open(fragmentPath);
-	std::stringstream vShaderStream, fShaderStream;
-	vShaderStream << vShaderFile.rdbuf();
-	fShaderStream << fShaderFile.rdbuf();
-	vShaderFile.close();
-	fShaderFile.close();
-	vertexCode = vShaderStream.str();
-	fragmentCode = fShaderStream.str();
-}
-catch (std::ifstream::failure e) {
-	std::cout << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ" << std::endl;
-}
+	try {
+		vShaderFile.open(vertexPath);
+		fShaderFile.open(fragmentPath);
+		std::stringstream vShaderStream, fShaderStream;
+		vShaderStream << vShaderFile.rdbuf();
+		fShaderStream << fShaderFile.rdbuf();
+		vShaderFile.close();
+		fShaderFile.close();
+		vertexCode = vShaderStream.str();
+		fragmentCode = fShaderStream.str();
+	}
+	catch (std::ifstream::failure e) {
+		std::cout << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ" << std::endl;
+	}
 
-programId = Create_Shader(vertexCode, fragmentCode);
+	programId = Create_Shader(vertexCode, fragmentCode);
 }
 
 Shader::~Shader() {
@@ -144,12 +144,15 @@ void Shader::SetMat4(const std::string& name, glm::mat4& value) const {
 }
 
 static inline std::string Read_File(std::filesystem::path const& path, std::vector<std::pair<std::string, std::string>> const& replacements) {
-	std::ifstream shaderFile(path);
-	shaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-	std::ostringstream shaderSource;
-	shaderSource << shaderFile.rdbuf();
-	shaderFile.close();
-	std::string shaderCode = shaderSource.str();
+	std::string shaderCode;
+	{
+		std::ifstream shaderFile(path);
+		shaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+		std::ostringstream shaderSource;
+		shaderSource << shaderFile.rdbuf();
+		shaderFile.close();
+		shaderCode = shaderSource.str();
+	}
 
 	for (std::pair<std::string, std::string> const& replace : replacements) {
 		for (size_t idx = shaderCode.find(replace.first); idx != std::string::npos; idx = shaderCode.find(replace.first, idx + replace.second.size())) {
@@ -183,37 +186,33 @@ static inline std::string Read_Paths(std::vector<std::string> const& paths, std:
 	return concatenatedCode;
 }
 
-GLShader::GLShader(Config& config) : programId(glCreateProgram()) {
-	std::string vertexCode = Read_Paths(config.pathsVertex, config.replacementsVertex);
-	vertexCode += config.mainVertexShader;
+typename GLShader::ResourceMap Get_Program_Interface_Name_Index(GLuint programId, GLenum interfaceId) {
+	const GLenum INFOQUERY[2] = { GL_NAME_LENGTH, GL_TYPE };
+	GLint activeResourceCount;
+	GLShader::ResourceMap nameIndexMap;
+	glGetProgramInterfaceiv(programId, interfaceId, GL_ACTIVE_RESOURCES, &activeResourceCount);
 
-	std::string fragmentCode = Read_Paths(config.pathsFragment, config.replacementsFragment);
-	fragmentCode += config.mainFragmentShader;
+	for (decltype(activeResourceCount) attributeIndex = 0; attributeIndex < activeResourceCount; ++attributeIndex) {
+		GLint resultInfo[2];
+		glGetProgramResourceiv(programId, interfaceId, attributeIndex, 1, INFOQUERY, 1, NULL, resultInfo);
 
-	unsigned int vs = Compile_Shader(GL_VERTEX_SHADER, vertexCode);
-	unsigned int fs = Compile_Shader(GL_FRAGMENT_SHADER, fragmentCode);
-
-	glAttachShader(programId, vs);
-	glAttachShader(programId, fs);
-	glLinkProgram(programId);
-	glValidateProgram(programId);
-
-	int result;
-	glGetProgramiv(programId, GL_LINK_STATUS, &result);
-
-	if (result == GL_FALSE) {
-		int length;
-		glGetProgramiv(programId, GL_INFO_LOG_LENGTH, &length);
-
-		std::string message(length, char(0));
-
-		glGetProgramInfoLog(programId, length, &length, message.data());
-
-		glDeleteShader(programId);
-		throw std::exception(("Failed to link shader: " + message).data());
-
+		std::string nameBuffer(resultInfo[0], char(0));
+		glGetProgramResourceName(programId, interfaceId, attributeIndex, nameBuffer.length(), NULL, nameBuffer.data());
+		nameIndexMap.emplace(nameBuffer, GLShader::ShaderResource(attributeIndex, resultInfo[1]));
 	}
 
-	glDeleteShader(vs);
-	glDeleteShader(fs);
+	return nameIndexMap;
+}
+
+GLShader::GLShader(Config& config) {
+	std::string vertexCode = Read_Paths(config.pathsVertex, config.replacementsVertex).append(config.mainVertexShader);
+
+	std::string fragmentCode = Read_Paths(config.pathsFragment, config.replacementsFragment).append(config.mainFragmentShader);
+
+	programId = Create_Shader(vertexCode, fragmentCode);
+
+	inputAttributes = Get_Program_Interface_Name_Index(programId, GL_PROGRAM_INPUT);
+	uniformCache = Get_Program_Interface_Name_Index(programId, GL_UNIFORM);
+	uniformBlocks = Get_Program_Interface_Name_Index(programId, GL_UNIFORM_BLOCK);
+	outputAttributes = Get_Program_Interface_Name_Index(programId, GL_PROGRAM_OUTPUT);
 }

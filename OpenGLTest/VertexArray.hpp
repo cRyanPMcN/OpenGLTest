@@ -15,10 +15,8 @@ public:
 
 		Binding(VertexArray& bindingSource, std::shared_ptr<BufferFormat> bufferFormat) : vertexArray(bindingSource), idBinding(0), buffer(nullptr), formatBuffer(bufferFormat) {
 			GLuint attributeId = 0;
-			glVertexArrayVertexBuffer(vertexArray.idVertexArray, idBinding, 0, 0, formatBuffer->stride);
 			// Bind attribute to buffer binding
 			for (BufferFormat::Attribute const& attribute : *formatBuffer) {
-				glVertexArrayAttribBinding(vertexArray.idVertexArray, attributeId, idBinding);
 				GLenum type = ConvertType(attribute.type);
 
 				switch (attribute.type) {
@@ -53,10 +51,8 @@ public:
 		}
 
 		Binding(VertexArray& bindingSource, GLuint bindingId, GLuint& attributeId, std::shared_ptr<BufferFormat> bufferFormat) : vertexArray(bindingSource), idBinding(bindingId), buffer(nullptr), formatBuffer(bufferFormat) {
-			glVertexArrayVertexBuffer(vertexArray.idVertexArray, idBinding, 0, 0, formatBuffer->stride);
 			// Bind attribute to buffer binding
 			for (BufferFormat::Attribute const& attribute : *formatBuffer) {
-				glVertexArrayAttribBinding(vertexArray.idVertexArray, attributeId, idBinding);
 				GLenum type = ConvertType(attribute.type);
 
 				switch (attribute.type) {
@@ -112,7 +108,7 @@ public:
 					return false;
 				}
 
-				glVertexArrayVertexBuffer(vertexArray.idVertexArray, idBinding, sourceBuffer->bufferId, 0, formatBuffer->stride);
+				glVertexArrayVertexBuffer(vertexArray.idVertexArray, idBinding, sourceBuffer->_bufferId, 0, formatBuffer->Stride());
 				glVertexArrayBindingDivisor(vertexArray.idVertexArray, idBinding, sourceBuffer->_divisor);
 				if (buffer == nullptr) {
 					for (GLuint attribute : idAttributes) {
@@ -148,6 +144,10 @@ protected:
 	std::vector<Binding> bindings;
 	std::shared_ptr<BufferIndex> bufferIndex;
 public:
+	VertexArray(std::shared_ptr<BufferFormat> const& vertexFormat) {
+
+	}
+
 	VertexArray(std::shared_ptr<BufferFormat>& vertexFormat) {
 		glCreateVertexArrays(1, &idVertexArray);
 		bindings.emplace_back(*this, vertexFormat);
@@ -235,7 +235,7 @@ public:
 		}
 
 		if (bufferIndex != buffer) {
-			glVertexArrayElementBuffer(idVertexArray, buffer->bufferId);
+			glVertexArrayElementBuffer(idVertexArray, buffer->_bufferId);
 			bufferIndex = buffer;
 		}
 

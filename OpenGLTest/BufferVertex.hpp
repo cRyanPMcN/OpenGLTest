@@ -29,8 +29,8 @@ public:
 	}
 
 	template <class _Ty>
-	bool ResetBuffer(std::vector<_Ty> const& vector) {
-		return this->ResetBuffer(sizeof(_Ty) * vector.size(), vector.data());
+	bool SwapBufferData(std::vector<_Ty> const& vector) {
+		return this->SwapBufferData(sizeof(_Ty) * vector.size(), vector.data());
 	}
 
 	bool operator==(const BufferVertex& other) const {

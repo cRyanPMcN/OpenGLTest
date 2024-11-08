@@ -250,7 +250,7 @@ namespace JsonParse {
 
 		}
 
-		JsonReader(std::string::iterator sourceBegin, std::string::iterator sourceEnd) : rootNode(nullptr), jsonSource(sourceBegin, sourceEnd), fileStats() {
+		JsonReader(std::string const& source) : rootNode(nullptr), jsonSource(source.cbegin(), source.cend()), fileStats() {
 			ParseJson();
 		}
 
@@ -264,7 +264,7 @@ namespace JsonParse {
 		}
 
 	protected:
-		bool IsJsonSpace(char c) {
+		bool IsJsonSpace(char const c) {
 			return (c == ' ' || c == '\n' || c == '\t' || c == '\r');
 		}
 

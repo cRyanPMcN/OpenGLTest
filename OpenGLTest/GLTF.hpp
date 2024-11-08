@@ -1879,7 +1879,7 @@ namespace GLTF {
 		Accessor& operator=(Accessor const&) = default;
 		Accessor& operator=(Accessor&&) = default;
 
-		static unsigned Component_Count(Type type) {
+		static unsigned Component_Count(Type const type) {
 			switch (type) {
 			case Type::Scalar:
 				return 1;
@@ -1902,7 +1902,7 @@ namespace GLTF {
 			return Component_Count(this->type);
 		}
 
-		static unsigned Byte_Per_Component(Enumerations::ComponentType componentType) {
+		static unsigned Byte_Per_Component(Enumerations::ComponentType const componentType) {
 			switch (componentType) {
 			case Enumerations::ComponentType::Byte:
 			case Enumerations::ComponentType::Unsigned_Byte:
@@ -2294,7 +2294,9 @@ namespace GLTF {
 					if (attribute.second->type != JsonParse::Type::Integer) {
 						throw GltfTypeMismatch(sourceObject, FILE_FUNCTION_LINE + ": object \"attributes\" attribute \"" + attribute.first + "\" value is not an integer.");
 					}
-					attributes[attribute.first] = std::static_pointer_cast<JsonParse::JsonInteger>(attribute.second)->value;
+					else {
+						attributes[attribute.first] = std::static_pointer_cast<JsonParse::JsonInteger>(attribute.second)->value;
+					}
 				}
 
 				type_json_array _targets = Get_Optional_Element<JsonParse::JsonArray>(sourceObject, Constants::TARGETS);
@@ -2310,8 +2312,9 @@ namespace GLTF {
 							if (attribute.second->type != JsonParse::Type::Integer) {
 								throw GltfTypeMismatch(target, FILE_FUNCTION_LINE + ": element \"targets\" at index: " + std::to_string(idx) + " attribute: \"" + attribute.first + "\" is not an integer.");
 							}
-
-							targets[attribute.first].emplace_back(attribute.first, std::static_pointer_cast<JsonParse::JsonInteger>(attribute.second)->value);
+							else {
+								targets[attribute.first].emplace_back(attribute.first, std::static_pointer_cast<JsonParse::JsonInteger>(attribute.second)->value);
+							}
 						}
 					}
 

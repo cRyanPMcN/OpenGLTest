@@ -51,8 +51,10 @@ vec4 QuaternionMultiply(vec4 quatLeft, vec4 quatRight) {
 };
 
 vec3 QuaternionRotate(const vec4 quaternion, const vec3 point) {
-	vec4 rotateOne = vec4(quaternion.w * point + cross(quaternion.xyz, point), dot(quaternion.xyz, point));
-	return vec3(quaternion.w * rotateOne.xyz + rotateOne.w * quaternion.xyz + cross(quaternion.xyz, rotateOne.xyz));
+	//vec4 rotateOne = vec4(quaternion.w * point + cross(quaternion.xyz, point), dot(quaternion.xyz, point));
+	//return vec3(quaternion.w * rotateOne.xyz + rotateOne.w * quaternion.xyz + cross(quaternion.xyz, rotateOne.xyz));
+	vec3 rotateOne = vec3(quaternion.w * point + cross(quaternion.xyz, point));
+	return vec3(quaternion.w * rotateOne.xyz + dot(quaternion.xyz, point) * quaternion.xyz + cross(quaternion.xyz, rotateOne.xyz));
 };
 
 void main() {
@@ -60,6 +62,7 @@ void main() {
 	//gl_Position = projection * view * vec4(QuaternionRotate(modelOrientation, vertexPosition) + modelPosition, 1.0);
 	//gl_Position = projection * vec4(QuaternionRotate(modelOrientation, vertexPosition) + modelPosition, 1.0);
 
+	// Note: Thre result of QuaternionRotate is NOT being cast to a quaternion, the w component in gl_Position is interpreted differently
 	gl_Position = projection * vec4(QuaternionRotate(cameraOrientation, QuaternionRotate(modelOrientation, vertexPosition * .01f) + modelPosition - cameraPosition), 1.0);
 	//gl_Position = projection * vec4(QuaternionRotate(QuaternionMultiply(cameraOrientation, modelOrientation), vertexPosition) + QuaternionRotate(cameraOrientation, modelPosition + cameraPosition), 1.0);
 	TexCoord = aTexCoord;

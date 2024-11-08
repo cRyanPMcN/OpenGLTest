@@ -13,7 +13,7 @@ struct PackedNormal {
 	};
 
 	static void Describe(BufferFormat& format) {
-		format.AddPacked(true);
+		format.AddPackedInteger(true);
 	}
 };
 

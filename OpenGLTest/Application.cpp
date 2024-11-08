@@ -1,4 +1,4 @@
-#include "Shader.h"
+#include "Shader.hpp"
 #include "VertexArray.hpp"
 #include "Graphics.hpp"
 #include "Ply.hpp"
@@ -211,6 +211,90 @@ void Load_GLB_File(std::vector<GLTFObject>& objectContainer, std::filesystem::pa
 	}
 }
 
+void AddAttribute(BufferFormat& format, GLTF::Accessor const* accessor, unsigned short count) {
+	switch (accessor->componentType) {
+	case GLTF::Enumerations::ComponentType::Byte:
+		format.AddByte(count, false, accessor->normalized);
+		break;
+	case GLTF::Enumerations::ComponentType::Unsigned_Byte:
+		format.AddUnsignedByte(count, false, accessor->normalized);
+		break;
+	case GLTF::Enumerations::ComponentType::Short:
+		format.AddShort(count, false, accessor->normalized);
+		break;
+	case GLTF::Enumerations::ComponentType::Unsigned_Short:
+		format.AddUnsignedShort(count, false, accessor->normalized);
+		break;
+	case GLTF::Enumerations::ComponentType::Int:
+		format.AddInteger(count, false, accessor->normalized);
+		break;
+	case GLTF::Enumerations::ComponentType::Unsigned_Int:
+		format.AddUnsignedInteger(count, false, accessor->normalized);
+		break;
+	}
+}
+
+template <class _Ty>
+void Check_Max_Min_Values(std::vector<unsigned char>& values, GLTF::Accessor const& accessor) {
+	if (values.size() / sizeof(_Ty) != accessor.count) {
+		// Don't check if it is not safe to check
+		return;
+	}
+
+	_Ty* valuePointer = reinterpret_cast<_Ty*>(values.data() + accessor.byteOffset);
+	_Ty* endPointer = reinterpret_cast<_Ty*>(values.data() + values.size());
+	decltype(accessor.ComponentCount()) componentCount(accessor.ComponentCount());
+	
+	if (accessor.max.size() == componentCount) {
+		// Check Max and Min
+		if (accessor.min.size() == componentCount) {
+			for (size_t initialIdx = 0; initialIdx < accessor.count; ++initialIdx) {
+				for (size_t repeater = 0, limit = componentCount; repeater < limit; ++repeater) {
+					if (valuePointer[initialIdx + repeater] > accessor.max[repeater]) {
+						valuePointer[initialIdx + repeater] = accessor.max[repeater];
+					}
+					if (valuePointer[initialIdx + repeater] < accessor.min[repeater]) {
+						valuePointer[initialIdx + repeater] = accessor.min[repeater];
+					}
+				}
+			}
+		}
+		// Check only max
+		else {
+			for (size_t initialIdx = 0; initialIdx < count; initialIdx += componentCount) {
+				for (size_t repeater = 0, limit = componentCount; repeater < limit; ++repeater) {
+					if (valuePointer[initialIdx + repeater] > accessor.max[repeater]) {
+						valuePointer[initialIdx + repeater] = accessor.max[repeater];
+					}
+				}
+			}
+		}
+	}
+	else {
+		// Check only min
+		if (accessor.min.size() = componentCount) {
+			for (size_t initialIdx = 0; initialIdx < count; initialIdx += componentCount) {
+				for (size_t repeater = 0, limit = componentCount; repeater < limit; ++repeater) {
+					if (valuePointer[initialIdx + repeater] < min[repeater]) {
+						valuePointer[initialIdx + repeater] = min[repeater];
+					}
+				}
+			}
+		}
+		else {
+			// No check
+		}
+	}
+}
+
+template <class _Ty>
+std::vector<_Ty> Subrange_Vector(std::vector<unsigned char>&& source, size_t offset, size_t distance) {
+	std::vector<_Ty>::const_iterator tempIter = source.cbegin() + offset;
+	std::vector<_Ty> copy(tempIter, tempIter + distance);
+	copy.resize(distance);
+	return copy;
+}
+
 GLTFObject Load_GLTF_File(std::filesystem::path const& path) {
 	if (std::filesystem::is_directory(path)) {
 		// Error?
@@ -222,96 +306,176 @@ GLTFObject Load_GLTF_File(std::filesystem::path const& path) {
 	}
 	if (path.extension() == ".gltf") {
 		// Load directly;
-		JsonParse::JsonFile file(path);
+		JsonParse::JsonReader file(path);
 		try {
-			std::pair<std::shared_ptr<JsonParse::JsonElement>, JsonParse::JsonFile::Statistics> t = JsonParse::JsonFile::Parse_Json(path);
+			std::pair<std::shared_ptr<JsonParse::JsonElement>, JsonParse::JsonReader::Statistics> t = JsonParse::JsonReader::Parse_Json(path);
+			// Path to the directory the GLTF file is located in
+			std::filesystem::path directoryPath(path.parent_path());
 			if (t.first->type == JsonParse::Type::Object) {
-				PathCurrentSetTemporary tempChange(path.parent_path());
 				std::shared_ptr<JsonParse::JsonObject> object = std::static_pointer_cast<JsonParse::JsonObject>(t.first);
 				GLTF::Validator validate(object);
 				if (validate.errors.empty()) {
 					GLTF::GLTFDoc doc(object);
 
 					std::vector<std::shared_ptr<GLCamera>> cameras;
-					struct GLNode;
-					struct GLSkin {
-						size_t inverseBindMatricesAccessor;
-						std::shared_ptr<GLNode> skeleton;
-						std::vector<std::shared_ptr<GLNode>> joints;
-						std::string name;
-					};
-					struct GLNode {
-						std::vector<std::shared_ptr<GLNode>> children;
-						std::shared_ptr<GLSkin> skin;
-					};
-					//std::vector<GLTFScene> scenes;
-
 					// Cameras can be front-loaded easily
 					for (GLTF::Camera const& camera : doc.cameras) {
 						cameras.emplace_back(std::make_shared<GLCamera>(camera));
 					}
 
-					for (GLTF::Scene const& scene : doc.scenes) {
+					std::vector<GLBuffer> buffers;
 
-					}
+					struct GLBufferView {
+						std::string name;
+						size_t targetType;
+						GLBuffer const& buffer;
+						size_t offsetInBytes;
+						size_t lengthInBytes;
+						size_t stride;
 
-					for (GLTF::Node const& node : doc.nodes) {
-						size_t count = node.weights.size();
-						for (GLTF::Mesh::Primitive const& primitive : doc.meshes[node.mesh].primitives) {
-
+						GLBufferView(GLTF::BufferView const& bufferView, GLBuffer const& _buffer) : buffer(_buffer), name(bufferView.name),
+							targetType(bufferView.target), stride(bufferView.byteStride) {
+							offsetInBytes = bufferView.byteOffset;
+							lengthInBytes = bufferView.byteLength;
+							
 						}
-					}
 
-					struct BufferData {
-						std::vector<unsigned char> data;
-						size_t alignment;
+						std::pair<decltype(buffer.bufferData)::const_iterator, decltype(buffer.bufferData)::const_iterator> Data() const {
+							return std::pair(buffer.bufferData.cbegin() + offsetInBytes, buffer.bufferData.cbegin() + offsetInBytes + lengthInBytes);
+						}
 					};
-					std::vector<std::vector<unsigned char>> bufferData;
-					std::vector<std::shared_ptr<GLSampler>> samplers;
-					std::vector<std::shared_ptr<Buffer>> buffers;
+					std::vector<GLBufferView> bufferViews;
 
-					{
-						std::vector<std::vector<unsigned char>> rawBufferData;
-						for (GLTF::Buffer const& buffer : doc.buffers) {
-							rawBufferData.emplace_back(GLBufferData::Load_Data(buffer));
-						}
-
-						for (GLTF::BufferView const& bufferView : doc.bufferViews) {
-							bufferData.emplace_back(rawBufferData[bufferView.buffer].begin() + bufferView.byteOffset, rawBufferData[bufferView.buffer].begin() + bufferView.byteOffset + bufferView.byteLength);
-						}
+					for (GLTF::Buffer const& buffer : doc.buffers) {
+						buffers.emplace_back(buffer, directoryPath);
 					}
 
-					//std::sort(std::cbegin(doc.accessors), std::cend(doc.accessors), [](GLTF::Accessor const& lhs, GLTF::Accessor const& rhs) { return lhs.bufferView < rhs.bufferView; });
+					for (GLTF::BufferView const& bufferView : doc.bufferViews) {
+						bufferViews.emplace_back(bufferView, buffers[bufferView.buffer]);
+					}
 
-					// Accessors are buffers, accessors defined where the data comes from
-					for (GLTF::Accessor accessor : doc.accessors) {
-						std::vector<unsigned char> data;
-						// Standard Accessor
-						if (!accessor.sparse.definedInFile) {
-							data.reserve(accessor.ByteLength());
-							if (accessor.bufferView != -1) {
-								std::vector<unsigned char>::const_iterator dataSource = bufferData[accessor.bufferView].begin() + accessor.byteOffset;
-								data.insert(data.begin(), dataSource, dataSource + accessor.ByteLength());
+					struct BVAInfo {
+						size_t alignment;
+						std::vector<GLTF::Accessor const*> accessors;
+
+						BVAInfo() : alignment(0), accessors() {
+
+						}
+					};
+					std::vector<BVAInfo> accInfo(bufferViews.size());
+					
+					for (GLTF::Accessor const& accessor : doc.accessors) {
+						BVAInfo& info = accInfo[accessor.bufferView];
+						if (info.alignment < accessor.BytesPerComponent()) {
+							info.alignment = accessor.BytesPerComponent();
+						}
+						info.accessors.emplace_back(&accessor);
+					}
+
+					std::vector<std::shared_ptr<BufferFormat>> bufferViewFormats;
+					
+					for (size_t index = 0; index < accInfo.size(); ++index) {
+						bufferViewFormats.emplace_back(new BufferFormat(accInfo[index].alignment));
+						GLBufferView const& view = bufferViews[index];
+						if (view.stride <= 0 && accInfo[index].accessors.size() == 1) {
+							bufferViews[index].stride = (*(accInfo[index].accessors.begin()))->BytesPerElement();
+						}
+
+						std::vector<unsigned char> bufferData(view.Data().first, view.Data().second);
+						std::shared_ptr<BufferFormat> format = bufferViewFormats.back();
+
+						for (GLTF::Accessor const* accessor : accInfo[index].accessors) {
+							switch (accessor->ComponentCount()) {
+							case 1:
+							case 2:
+							case 4:
+								AddAttribute(*format, accessor, accessor->ComponentCount());
+								break;
+							case 9:
+								AddAttribute(*format, accessor, 3);
+								AddAttribute(*format, accessor, 3);
+								AddAttribute(*format, accessor, 3);
+								break;
+							case 16:
+								AddAttribute(*format, accessor, 4);
+								AddAttribute(*format, accessor, 4);
+								AddAttribute(*format, accessor, 4);
+								AddAttribute(*format, accessor, 4);
+								break;
+							}
+
+							if (accessor->sparse.definedInFile) {
+								GLTF::Accessor::Sparse const& sparse = accessor->sparse;
+								std::vector<unsigned char> values;
+								std::vector<unsigned char> indices;
+								 
+								{
+									// Value
+									size_t byteOffset = sparse.values.byteOffset;
+									size_t distance = byteOffset + sparse.count * accessor->BytesPerElement();
+									std::vector<unsigned char>::const_iterator iter = bufferViews[sparse.values.bufferView].Data().first;
+									values.assign(iter + byteOffset, iter + distance);
+									// Index
+									byteOffset = sparse.indices.byteOffset;
+									distance = byteOffset + sparse.IndexSize();
+									iter = bufferViews[sparse.indices.bufferView].Data().first;
+									indices.assign(iter + byteOffset, iter + distance);
+								}
+
+								switch (sparse.indices.componentType) {
+								case GLTF::Enumerations::ComponentType::Unsigned_Byte:
+									for (decltype(sparse.count) idxSparse = 0; idxSparse < sparse.count; ++idxSparse) {
+										unsigned char* pointerDestination = bufferData.data() + accessor->byteOffset + (view.stride * indices[idxSparse]);
+										memcpy_s(pointerDestination, accessor->BytesPerElement(), values.data() + idxSparse * accessor->BytesPerElement(), accessor->BytesPerElement());
+									}
+									break;
+								case GLTF::Enumerations::ComponentType::Unsigned_Short: {
+									unsigned short* idxInBufferView = reinterpret_cast<unsigned short*>(indices.data());
+									for (decltype(sparse.count) idxSparse = 0; idxSparse < sparse.count; ++idxSparse) {
+										unsigned char* pointerDestination = bufferData.data() + accessor->byteOffset + (view.stride * idxInBufferView[idxSparse]);
+										memcpy_s(pointerDestination, accessor->BytesPerElement(), values.data() + idxSparse * accessor->BytesPerElement(), accessor->BytesPerElement());
+									}
+								}
+									break;
+								case GLTF::Enumerations::ComponentType::Unsigned_Int: {
+									unsigned int* idxInBufferView = reinterpret_cast<unsigned int*>(indices.data());
+									for (decltype(sparse.count) idxSparse = 0; idxSparse < sparse.count; ++idxSparse) {
+										unsigned char* pointerDestination = bufferData.data() + accessor->byteOffset + (view.stride * idxInBufferView[idxSparse]);
+										memcpy_s(pointerDestination, accessor->BytesPerElement(), values.data() + idxSparse * accessor->BytesPerElement(), accessor->BytesPerElement());
+									}
+									break;
+								}
+								}
+							}
+
+							switch (accessor->componentType) {
+							case GLTF::Enumerations::ComponentType::Byte:
+								Check_Max_Min_Values<char>(bufferData, *accessor);
+								break;
+							case GLTF::Enumerations::ComponentType::Unsigned_Byte:
+								Check_Max_Min_Values<unsigned char>(bufferData, *accessor);
+								break;
+							case GLTF::Enumerations::ComponentType::Short:
+								Check_Max_Min_Values<short>(bufferData, *accessor);
+								break;
+							case GLTF::Enumerations::ComponentType::Unsigned_Short:
+								Check_Max_Min_Values<unsigned short>(bufferData, *accessor);
+								break;
+							case GLTF::Enumerations::ComponentType::Int:
+								Check_Max_Min_Values<int>(bufferData, *accessor);
+								break;
+							case GLTF::Enumerations::ComponentType::Unsigned_Int:
+								Check_Max_Min_Values<unsigned int>(bufferData, *accessor);
+								break;
+							case GLTF::Enumerations::ComponentType::Float:
+								Check_Max_Min_Values<float>(bufferData, *accessor);
+								break;
 							}
 						}
-						// Sparse Accessor
-						else {
-
-						}
 					}
 
-					for (GLTF::Sampler const& sampler : doc.samplers) {
-						samplers.emplace_back(std::make_shared<GLSampler>(sampler));
-					}
-
-					for (GLTF::Image const& image : doc.images) {
-						if (image.uri.empty()) {
-							// Expect bufferView
-						}
-						else {
-							// Expect URI
-						}
-					}
+					//doc.meshes[0];
+					
 				}
 			}
 		}
